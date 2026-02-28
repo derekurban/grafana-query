@@ -46,6 +46,33 @@ See: [`docs/INSTALL.md`](docs/INSTALL.md)
 go install github.com/derekurban/grafana-query@latest
 ```
 
+## Releasing
+
+Releases are tag-driven via [`.github/workflows/release.yml`](.github/workflows/release.yml).
+Pushing a semantic version tag like `v0.1.0` triggers:
+
+- `go test ./...`
+- GoReleaser builds and archives for Linux/macOS/Windows (`amd64`, `arm64`)
+- `checksums.txt` generation
+- Sigstore `cosign` signing of checksums (`checksums.txt.sig`, `checksums.txt.pem`)
+- GitHub Release publish with artifacts
+
+### Create the next tag
+
+Bash:
+
+```bash
+./scripts/release/bump-tag.sh --patch
+```
+
+PowerShell:
+
+```powershell
+./scripts/release/bump-tag.ps1 --patch
+```
+
+You can replace `--patch` with `--minor` or `--major`.
+
 ## Quick start
 
 ```bash
