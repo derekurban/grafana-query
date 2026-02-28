@@ -1,2 +1,3 @@
 /grafquery
 .DS_Store
+.env*
