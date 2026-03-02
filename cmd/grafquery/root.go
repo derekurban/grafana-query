@@ -39,6 +39,7 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(newSignalCmd(opts, "traces"))
 	cmd.AddCommand(newCorrelateCmd(opts))
 	cmd.AddCommand(newDashCmd(opts))
+	cmd.AddCommand(newLocalCmd(opts))
 	cmd.AddCommand(newVersionCmd())
 
 	return cmd

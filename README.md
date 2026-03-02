@@ -52,6 +52,14 @@ go install github.com/derekurban/grafana-query@latest
 npm install -g @derekurban/grafquery
 ```
 
+### Local observability stack (Docker)
+
+```bash
+grafquery local setup
+```
+
+This interactive setup boots a local Grafana + Loki + Prometheus + Tempo stack, exposes OTLP ingest endpoints, creates a Grafana service token, and writes a ready-to-use `grafquery` context.
+
 ## Releasing
 
 Releases are tag-driven via [`.github/workflows/release.yml`](.github/workflows/release.yml).
@@ -79,6 +87,15 @@ PowerShell:
 ```
 
 You can replace `--patch` with `--minor` or `--major`.
+
+## Local stack commands
+
+- `grafquery local setup` (interactive TUI-style bootstrap)
+- `grafquery local up`
+- `grafquery local down`
+- `grafquery local status`
+- `grafquery local info` (shows OTLP endpoints + Grafana service token)
+- `grafquery local purge` (removes containers, volumes, local files, and local context)
 
 ## Quick start
 
@@ -137,6 +154,7 @@ aliases:
 - `grafquery correlate --service <svc>`
 - `grafquery dash list`
 - `grafquery dash run <dashboard-uid>`
+- `grafquery local setup|up|down|status|info|purge`
 
 ## Notes
 
