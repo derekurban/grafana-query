@@ -40,6 +40,7 @@ func newLocalCmd(opts *GlobalOptions) *cobra.Command {
 	cmd.AddCommand(newLocalSetupCmd(opts, &dirFlag))
 	cmd.AddCommand(newLocalUpCmd(&dirFlag))
 	cmd.AddCommand(newLocalDownCmd(&dirFlag))
+	cmd.AddCommand(newLocalResetCmd(&dirFlag))
 	cmd.AddCommand(newLocalStatusCmd(&dirFlag))
 	cmd.AddCommand(newLocalInfoCmd(opts, &dirFlag))
 	cmd.AddCommand(newLocalPurgeCmd(opts, &dirFlag))
@@ -64,7 +65,7 @@ func newLocalSetupCmd(opts *GlobalOptions, dirFlag *string) *cobra.Command {
 
 	cmd.Flags().StringVar(&contextName, "context-name", defaultLocalContextName, "Context name to write in config")
 	cmd.Flags().StringVar(&grafanaUser, "grafana-user", "", "Grafana admin username for local stack (default: admin)")
-	cmd.Flags().StringVar(&grafanaPassword, "grafana-password", "", "Grafana admin password for local stack (default: admin)")
+	cmd.Flags().StringVar(&grafanaPassword, "grafana-password", "", "Grafana admin password for local stack (default: password)")
 	cmd.Flags().BoolVar(&nonInteractive, "non-interactive", false, "Skip confirmation prompts")
 	cmd.Flags().BoolVar(&switchContext, "switch-context", true, "Set the created context as current context")
 
@@ -128,6 +129,60 @@ func newLocalDownCmd(dirFlag *string) *cobra.Command {
 			return nil
 		},
 	}
+}
+
+func newLocalResetCmd(dirFlag *string) *cobra.Command {
+	var yes bool
+	var restart bool
+
+	cmd := &cobra.Command{
+		Use:   "reset <logs|metrics|traces|all>",
+		Short: "Clear stored data for one or more local observability databases",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			target := strings.ToLower(strings.TrimSpace(args[0]))
+			switch target {
+			case "logs", "metrics", "traces", "all":
+			default:
+				return fmt.Errorf("unsupported target %q (use logs|metrics|traces|all)", target)
+			}
+
+			rootDir, err := localstack.ResolveRootDir(*dirFlag)
+			if err != nil {
+				return err
+			}
+
+			if !yes {
+				ok, err := promptYesNo(
+					fmt.Sprintf("Reset local %s data in %s? This permanently deletes stored telemetry.", target, rootDir),
+					false,
+				)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					fmt.Println("Cancelled.")
+					return nil
+				}
+			}
+
+			if err := localstack.ResetData(rootDir, target, restart); err != nil {
+				return err
+			}
+
+			fmt.Printf("Reset completed for %s.\n", target)
+			if restart {
+				fmt.Println("Services were restarted.")
+			} else {
+				fmt.Println("Services were not restarted. Run `grafquery local up` when ready.")
+			}
+			return nil
+		},
+	}
+
+	cmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
+	cmd.Flags().BoolVar(&restart, "restart", true, "Restart affected services after reset")
+	return cmd
 }
 
 func newLocalStatusCmd(dirFlag *string) *cobra.Command {
@@ -271,6 +326,9 @@ func runLocalSetup(opts *GlobalOptions, dirValue, contextName, grafanaUser, graf
 		existingUser = localstack.DefaultGrafanaAdminUser
 	}
 	if existingPassword == "" {
+		existingPassword = localstack.DefaultGrafanaAdminPassword
+	}
+	if existingUser == localstack.DefaultGrafanaAdminUser && existingPassword == "admin" {
 		existingPassword = localstack.DefaultGrafanaAdminPassword
 	}
 

@@ -23,7 +23,7 @@ const (
 
 	DefaultGrafanaURL           = "http://localhost:13000"
 	DefaultGrafanaAdminUser     = "admin"
-	DefaultGrafanaAdminPassword = "admin"
+	DefaultGrafanaAdminPassword = "password"
 
 	DefaultOTLPGRPCEndpoint = "localhost:4317"
 	DefaultOTLPHTTPEndpoint = "http://localhost:4318"
@@ -32,6 +32,15 @@ const (
 	PrometheusDatasourceUID = "local-prometheus"
 	TempoDatasourceUID      = "local-tempo"
 )
+
+var resetTargetConfig = map[string]struct {
+	service string
+	volume  string
+}{
+	"logs":    {service: "loki", volume: "loki-data"},
+	"metrics": {service: "prometheus", volume: "prometheus-data"},
+	"traces":  {service: "tempo", volume: "tempo-data"},
+}
 
 type State struct {
 	GrafanaURL      string    `json:"grafana_url"`
@@ -220,6 +229,67 @@ func Purge(rootDir string) error {
 	if len(errs) > 0 {
 		return errors.New(strings.Join(errs, "; "))
 	}
+	return nil
+}
+
+func ResetData(rootDir, target string, restart bool) error {
+	target = strings.ToLower(strings.TrimSpace(target))
+	if target == "" {
+		return errors.New("reset target cannot be empty")
+	}
+
+	if err := EnsureScaffold(rootDir); err != nil {
+		return err
+	}
+
+	targets := []string{target}
+	if target == "all" {
+		targets = []string{"logs", "metrics", "traces"}
+	}
+
+	services := make([]string, 0, len(targets))
+	volumes := make([]string, 0, len(targets))
+	for _, t := range targets {
+		cfg, ok := resetTargetConfig[t]
+		if !ok {
+			return fmt.Errorf("unsupported reset target %q (use logs|metrics|traces|all)", t)
+		}
+		services = append(services, cfg.service)
+		volumes = append(volumes, cfg.volume)
+	}
+
+	for _, service := range services {
+		if stopCmd, err := composeCommand(rootDir, "stop", service); err == nil {
+			_, _ = runCommand(stopCmd)
+		}
+		if rmCmd, err := composeCommand(rootDir, "rm", "-f", "-s", service); err == nil {
+			_, _ = runCommand(rmCmd)
+		}
+	}
+
+	for _, volume := range volumes {
+		volumeName := fmt.Sprintf("%s_%s", defaultProjectName, volume)
+		_, err := runCommand(exec.Command("docker", "volume", "rm", "-f", volumeName))
+		if err != nil {
+			lower := strings.ToLower(err.Error())
+			if strings.Contains(lower, "no such volume") || strings.Contains(lower, "not found") {
+				continue
+			}
+			return fmt.Errorf("failed to remove volume %s: %w", volumeName, err)
+		}
+	}
+
+	if restart {
+		args := append([]string{"up", "-d"}, services...)
+		upCmd, err := composeCommand(rootDir, args...)
+		if err != nil {
+			return err
+		}
+		if _, err := runCommand(upCmd); err != nil {
+			return fmt.Errorf("failed to restart services after reset: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -538,6 +608,8 @@ const dockerComposeYAML = `services:
     command: [ "-config.file=/etc/loki/local-config.yaml" ]
     ports:
       - "13100:3100"
+    volumes:
+      - loki-data:/loki
 
   prometheus:
     image: prom/prometheus:v2.54.1
@@ -548,6 +620,7 @@ const dockerComposeYAML = `services:
     ports:
       - "13090:9090"
     volumes:
+      - prometheus-data:/prometheus
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
 
   tempo:
@@ -557,6 +630,7 @@ const dockerComposeYAML = `services:
     ports:
       - "13200:3200"
     volumes:
+      - tempo-data:/tmp/tempo
       - ./tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
 
   otel-collector:
@@ -575,25 +649,28 @@ const dockerComposeYAML = `services:
 
 volumes:
   grafana-data:
+  loki-data:
+  prometheus-data:
+  tempo-data:
 `
 
 const grafanaDatasourcesYAML = `apiVersion: 1
 datasources:
-  - name: Loki
+  - name: logs
     uid: local-loki
     type: loki
     access: proxy
     url: http://loki:3100
     editable: false
 
-  - name: Prometheus
+  - name: metrics
     uid: local-prometheus
     type: prometheus
     access: proxy
     url: http://prometheus:9090
     editable: false
 
-  - name: Tempo
+  - name: traces
     uid: local-tempo
     type: tempo
     access: proxy

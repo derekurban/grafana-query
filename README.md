@@ -61,7 +61,7 @@ grafquery local setup
 ```
 
 This interactive setup boots a local Grafana + Loki + Prometheus + Tempo stack, exposes OTLP ingest endpoints, creates a Grafana service token, and writes a ready-to-use `grafquery` context.
-During setup you can accept the default Grafana admin credentials (`admin` / `admin`) or provide your own.
+During setup you can accept the default Grafana admin credentials (`admin` / `password`) or provide your own.
 
 ## Releasing
 
@@ -96,6 +96,7 @@ You can replace `--patch` with `--minor` or `--major`.
 - `grafquery local setup` (interactive TUI-style bootstrap)
 - `grafquery local up`
 - `grafquery local down`
+- `grafquery local reset <logs|metrics|traces|all>` (clears stored telemetry data for selected backend(s))
 - `grafquery local status`
 - `grafquery local info` (shows OTLP endpoints + Grafana URL/username/password/service token)
 - `grafquery local purge` (removes containers, volumes, local files, and local context)
@@ -157,7 +158,7 @@ aliases:
 - `grafquery correlate --service <svc>`
 - `grafquery dash list`
 - `grafquery dash run <dashboard-uid>`
-- `grafquery local setup|up|down|status|info|purge`
+- `grafquery local setup|up|down|reset|status|info|purge`
 
 ## Notes
 
