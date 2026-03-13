@@ -4,7 +4,11 @@ const path = require("node:path");
 const https = require("node:https");
 const { spawnSync } = require("node:child_process");
 
-const repo = process.env.GRAFQUERY_REPO || process.env.GRAFANA_QUERY_REPO || "derekurban/grafana-query";
+const repo =
+  process.env.WABSIGNAL_REPO ||
+  process.env.GRAFQUERY_REPO ||
+  process.env.GRAFANA_QUERY_REPO ||
+  "derekurban/wabii-signal";
 const packageJsonPath = path.join(__dirname, "..", "package.json");
 const pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
 const version = pkg.version;
@@ -12,18 +16,18 @@ const version = pkg.version;
 const goos = mapOs(process.platform);
 const goarch = mapArch(process.arch);
 const ext = goos === "windows" ? "zip" : "tar.gz";
-const binaryName = goos === "windows" ? "grafquery.exe" : "grafquery";
-const asset = `grafquery_${version}_${goos}_${goarch}.${ext}`;
+const binaryName = goos === "windows" ? "wabsignal.exe" : "wabsignal";
+const asset = `wabsignal_${version}_${goos}_${goarch}.${ext}`;
 const url = `https://github.com/${repo}/releases/download/v${version}/${asset}`;
 
-const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "grafquery-npm-"));
+const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "wabsignal-npm-"));
 const archivePath = path.join(tempDir, asset);
 const extractDir = path.join(tempDir, "extract");
 const outputBinaryPath = path.join(__dirname, "..", "bin", binaryName);
 const userBinDir = resolveUserBinDir();
 
 main().catch((err) => {
-  console.error(`[grafquery npm] ${err.message}`);
+  console.error(`[wabsignal npm] ${err.message}`);
   process.exit(1);
 });
 
@@ -31,7 +35,7 @@ async function main() {
   fs.mkdirSync(extractDir, { recursive: true });
   fs.mkdirSync(path.dirname(outputBinaryPath), { recursive: true });
 
-  console.log(`[grafquery npm] Downloading ${url}`);
+  console.log(`[wabsignal npm] Downloading ${url}`);
   await download(url, archivePath);
   extractArchive(archivePath, extractDir, goos);
 
@@ -47,7 +51,7 @@ async function main() {
     // Best effort for non-POSIX environments.
   }
 
-  console.log(`[grafquery npm] Installed package-local ${binaryName}`);
+  console.log(`[wabsignal npm] Installed package-local ${binaryName}`);
 
   installToUserBin(outputBinaryPath);
   ensurePathContainsUserBin(userBinDir);
@@ -155,6 +159,7 @@ function findFileRecursive(root, fileName) {
 
 function resolveUserBinDir() {
   const explicit =
+    process.env.WABSIGNAL_INSTALL_DIR ||
     process.env.GRAFQUERY_INSTALL_DIR ||
     process.env.GRAFANA_QUERY_INSTALL_DIR;
   if (explicit) {
@@ -173,14 +178,18 @@ function installToUserBin(sourceBinaryPath) {
     } catch {
       // Best effort for non-POSIX environments.
     }
-    console.log(`[grafquery npm] Installed ${binaryName} to ${destination}`);
+    console.log(`[wabsignal npm] Installed ${binaryName} to ${destination}`);
   } catch (err) {
-    console.warn(`[grafquery npm] Warning: failed to install to ${userBinDir}: ${err.message}`);
+    console.warn(`[wabsignal npm] Warning: failed to install to ${userBinDir}: ${err.message}`);
   }
 }
 
 function ensurePathContainsUserBin(dir) {
-  const autoPath = isTruthy(process.env.GRAFQUERY_NPM_AUTO_PATH ?? "1");
+  const autoPath = isTruthy(
+    process.env.WABSIGNAL_NPM_AUTO_PATH ??
+    process.env.GRAFQUERY_NPM_AUTO_PATH ??
+    "1"
+  );
   if (!autoPath) {
     return;
   }
@@ -221,13 +230,13 @@ function ensureWindowsUserPath(dir) {
   });
   if (result.status !== 0) {
     console.warn(
-      `[grafquery npm] Warning: unable to update User PATH automatically. Add ${dir} to PATH manually.`
+      `[wabsignal npm] Warning: unable to update User PATH automatically. Add ${dir} to PATH manually.`
     );
     return;
   }
   process.env.PATH = `${dir};${process.env.PATH || ""}`;
   if ((result.stdout || "").includes("updated")) {
-    console.log(`[grafquery npm] Added ${dir} to User PATH. Open a new shell to use grafquery.`);
+    console.log(`[wabsignal npm] Added ${dir} to User PATH. Open a new shell to use wabsignal.`);
   }
 }
 
@@ -247,13 +256,13 @@ function ensurePosixUserPath(dir) {
     }
     const content = fs.readFileSync(profile, "utf8");
     if (!content.includes(line)) {
-      fs.appendFileSync(profile, `\n# Added by grafquery npm install\n${line}\n`);
-      console.log(`[grafquery npm] Added ${dir} to PATH in ${profile}. Restart your shell.`);
+      fs.appendFileSync(profile, `\n# Added by wabsignal npm install\n${line}\n`);
+      console.log(`[wabsignal npm] Added ${dir} to PATH in ${profile}. Restart your shell.`);
     }
     process.env.PATH = `${dir}:${process.env.PATH || ""}`;
   } catch (err) {
     console.warn(
-      `[grafquery npm] Warning: unable to update PATH profile automatically (${err.message}).`
+      `[wabsignal npm] Warning: unable to update PATH profile automatically (${err.message}).`
     );
   }
 }
@@ -288,3 +297,4 @@ function isTruthy(value) {
       return false;
   }
 }
+

@@ -1,18 +1,18 @@
 {
-  "name": "grafquery",
+  "name": "wabsignal",
   "version": "0.0.0-dev",
-  "description": "grafquery CLI for querying Grafana logs, metrics, and traces",
+  "description": "wabsignal CLI for querying Grafana logs, metrics, and traces",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/derekurban/grafana-query.git"
+    "url": "git+https://github.com/derekurban/wabii-signal.git"
   },
-  "homepage": "https://github.com/derekurban/grafana-query",
+  "homepage": "https://github.com/derekurban/wabii-signal",
   "bugs": {
-    "url": "https://github.com/derekurban/grafana-query/issues"
+    "url": "https://github.com/derekurban/wabii-signal/issues"
   },
   "bin": {
-    "grafquery": "bin/grafquery.js"
+    "wabsignal": "bin/wabsignal.js"
   },
   "scripts": {
     "postinstall": "node scripts/postinstall.js"
@@ -43,3 +43,4 @@
     "arm64"
   ]
 }
+

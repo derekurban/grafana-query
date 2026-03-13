@@ -46,6 +46,11 @@ type SearchDashboard struct {
 	URI   string `json:"uri"`
 }
 
+type Health struct {
+	Database string `json:"database"`
+	Version  string `json:"version"`
+}
+
 type QueryRequest struct {
 	From    string         `json:"from"`
 	To      string         `json:"to"`
@@ -93,6 +98,14 @@ func (q QueryPayload) MarshalJSON() ([]byte, error) {
 func (c *Client) GetDataSources(ctx context.Context) ([]DataSource, error) {
 	var out []DataSource
 	if err := c.getJSON(ctx, "/api/datasources", &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *Client) GetHealth(ctx context.Context) (*Health, error) {
+	out := &Health{}
+	if err := c.getJSON(ctx, "/api/health", out); err != nil {
 		return nil, err
 	}
 	return out, nil

@@ -1,29 +1,29 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="${GRAFQUERY_REPO:-${GRAFANA_QUERY_REPO:-derekurban/grafana-query}}"
-MODULE_PATH="${GRAFQUERY_MODULE_PATH:-${GRAFANA_QUERY_MODULE_PATH:-github.com/${REPO}}}"
-OFFICIAL_REPO="derekurban/grafana-query"
-LEGACY_REPO="derekurban2001/grafana-query"
-BINARY_NAME="grafquery"
-OWNERSHIP_MARKER_MAGIC="grafquery-owned-binary-v1"
-INSTALL_DIR="${GRAFQUERY_INSTALL_DIR:-${GRAFANA_QUERY_INSTALL_DIR:-$HOME/.local/bin}}"
-VERSION="${GRAFQUERY_VERSION:-${GRAFANA_QUERY_VERSION:-latest}}" # latest | vX.Y.Z
-AUTO_PATH="${GRAFQUERY_AUTO_PATH:-${GRAFANA_QUERY_AUTO_PATH:-1}}" # 1/true/yes/on -> persist PATH update
-VERIFY_SIGNATURES="${GRAFQUERY_VERIFY_SIGNATURES:-${GRAFANA_QUERY_VERIFY_SIGNATURES:-1}}" # 1/true/yes/on -> enforce cosign verification
-ALLOW_SOURCE_FALLBACK="${GRAFQUERY_ALLOW_SOURCE_FALLBACK:-${GRAFANA_QUERY_ALLOW_SOURCE_FALLBACK:-0}}" # 1/true/yes/on -> allow go install fallback
-COSIGN_VERSION="${GRAFQUERY_COSIGN_VERSION:-${GRAFANA_QUERY_COSIGN_VERSION:-v2.5.3}}"
-if [[ "$REPO" == "$OFFICIAL_REPO" || "$REPO" == "$LEGACY_REPO" ]]; then
-  DEFAULT_COSIGN_IDENTITY_RE="^https://github.com/(derekurban/grafana-query|derekurban2001/grafana-query)/.github/workflows/release.yml@refs/tags/.*$"
+REPO="${WABSIGNAL_REPO:-${GRAFQUERY_REPO:-${GRAFANA_QUERY_REPO:-derekurban/wabii-signal}}}"
+MODULE_PATH="${WABSIGNAL_MODULE_PATH:-${GRAFQUERY_MODULE_PATH:-${GRAFANA_QUERY_MODULE_PATH:-github.com/${REPO}}}}"
+OFFICIAL_REPO="derekurban/wabii-signal"
+LEGACY_REPO="derekurban/grafana-query"
+BINARY_NAME="wabsignal"
+OWNERSHIP_MARKER_MAGIC="wabsignal-owned-binary-v1"
+INSTALL_DIR="${WABSIGNAL_INSTALL_DIR:-${GRAFQUERY_INSTALL_DIR:-${GRAFANA_QUERY_INSTALL_DIR:-$HOME/.local/bin}}}"
+VERSION="${WABSIGNAL_VERSION:-${GRAFQUERY_VERSION:-${GRAFANA_QUERY_VERSION:-latest}}}" # latest | vX.Y.Z
+AUTO_PATH="${WABSIGNAL_AUTO_PATH:-${GRAFQUERY_AUTO_PATH:-${GRAFANA_QUERY_AUTO_PATH:-1}}}" # 1/true/yes/on -> persist PATH update
+VERIFY_SIGNATURES="${WABSIGNAL_VERIFY_SIGNATURES:-${GRAFQUERY_VERIFY_SIGNATURES:-${GRAFANA_QUERY_VERIFY_SIGNATURES:-1}}}" # 1/true/yes/on -> enforce cosign verification
+ALLOW_SOURCE_FALLBACK="${WABSIGNAL_ALLOW_SOURCE_FALLBACK:-${GRAFQUERY_ALLOW_SOURCE_FALLBACK:-${GRAFANA_QUERY_ALLOW_SOURCE_FALLBACK:-0}}}" # 1/true/yes/on -> allow go install fallback
+COSIGN_VERSION="${WABSIGNAL_COSIGN_VERSION:-${GRAFQUERY_COSIGN_VERSION:-${GRAFANA_QUERY_COSIGN_VERSION:-v2.5.3}}}"
+if [[ "$REPO" == "$OFFICIAL_REPO" || "$REPO" == "$LEGACY_REPO" || "$REPO" == "derekurban2001/grafana-query" ]]; then
+  DEFAULT_COSIGN_IDENTITY_RE="^https://github.com/(derekurban/wabii-signal|derekurban/grafana-query|derekurban2001/grafana-query)/.github/workflows/release.yml@refs/tags/.*$"
 else
   DEFAULT_COSIGN_IDENTITY_RE="^https://github.com/${REPO}/.github/workflows/release.yml@refs/tags/.*$"
 fi
-COSIGN_IDENTITY_RE="${GRAFQUERY_COSIGN_IDENTITY_RE:-${GRAFANA_QUERY_COSIGN_IDENTITY_RE:-$DEFAULT_COSIGN_IDENTITY_RE}}"
-COSIGN_OIDC_ISSUER="${GRAFQUERY_COSIGN_OIDC_ISSUER:-${GRAFANA_QUERY_COSIGN_OIDC_ISSUER:-https://token.actions.githubusercontent.com}}"
+COSIGN_IDENTITY_RE="${WABSIGNAL_COSIGN_IDENTITY_RE:-${GRAFQUERY_COSIGN_IDENTITY_RE:-${GRAFANA_QUERY_COSIGN_IDENTITY_RE:-$DEFAULT_COSIGN_IDENTITY_RE}}}"
+COSIGN_OIDC_ISSUER="${WABSIGNAL_COSIGN_OIDC_ISSUER:-${GRAFQUERY_COSIGN_OIDC_ISSUER:-${GRAFANA_QUERY_COSIGN_OIDC_ISSUER:-https://token.actions.githubusercontent.com}}}"
 
-log() { printf "[grafquery-install] %s\n" "$*"; }
-warn() { printf "[grafquery-install] WARN: %s\n" "$*" >&2; }
-err() { printf "[grafquery-install] ERROR: %s\n" "$*" >&2; exit 1; }
+log() { printf "[wabsignal-install] %s\n" "$*"; }
+warn() { printf "[wabsignal-install] WARN: %s\n" "$*" >&2; }
+err() { printf "[wabsignal-install] ERROR: %s\n" "$*" >&2; exit 1; }
 
 need_cmd() {
   command -v "$1" >/dev/null 2>&1 || err "Required command not found: $1"
@@ -59,7 +59,7 @@ default_profile_file() {
 persist_path_update() {
   local profile line marker
   profile="$(default_profile_file)"
-  marker="# Added by grafquery installer"
+  marker="# Added by wabsignal installer"
   line="export PATH=\"${INSTALL_DIR}:\$PATH\""
 
   mkdir -p "$(dirname "$profile")"
@@ -100,7 +100,7 @@ ownership_marker_path() {
 	local dir base
 	dir="$(dirname "$bin_path")"
 	base="$(basename "$bin_path")"
-	printf "%s/.%s.grafquery-owner" "$dir" "$base"
+	printf "%s/.%s.wabsignal-owner" "$dir" "$base"
 }
 
 write_ownership_marker() {
@@ -198,7 +198,7 @@ ensure_cosign() {
 verify_checksums_signature() {
   local os="$1" arch="$2" tmpdir="$3" checksums_file="$4" sig_file="$5" cert_file="$6"
   if ! is_truthy "$VERIFY_SIGNATURES"; then
-    warn "Signature verification disabled via GRAFQUERY_VERIFY_SIGNATURES=0"
+    warn "Signature verification disabled via WABSIGNAL_VERIFY_SIGNATURES=0"
     return 0
   fi
 
@@ -286,7 +286,7 @@ install_from_release() {
       return 1
     fi
   else
-    warn "Signature verification disabled via GRAFQUERY_VERIFY_SIGNATURES=0"
+    warn "Signature verification disabled via WABSIGNAL_VERIFY_SIGNATURES=0"
   fi
 
   local expected_hash actual_hash
@@ -383,7 +383,7 @@ main() {
       if is_truthy "$ALLOW_SOURCE_FALLBACK"; then
         warn "Could not resolve latest release tag; will use go install fallback"
       else
-        err "Could not resolve latest release tag and source fallback is disabled (set GRAFQUERY_ALLOW_SOURCE_FALLBACK=1 to enable)"
+        err "Could not resolve latest release tag and source fallback is disabled (set WABSIGNAL_ALLOW_SOURCE_FALLBACK=1 to enable)"
       fi
     fi
   fi
@@ -396,14 +396,14 @@ main() {
         warn "Release install failed; using go install fallback"
         install_with_go "$os" "$VERSION"
       else
-        err "Release install failed and source fallback is disabled (set GRAFQUERY_ALLOW_SOURCE_FALLBACK=1 to enable)"
+        err "Release install failed and source fallback is disabled (set WABSIGNAL_ALLOW_SOURCE_FALLBACK=1 to enable)"
       fi
     fi
   else
     if is_truthy "$ALLOW_SOURCE_FALLBACK"; then
       install_with_go "$os" "$VERSION"
     else
-      err "No release version resolved and source fallback is disabled (set GRAFQUERY_ALLOW_SOURCE_FALLBACK=1 to enable)"
+      err "No release version resolved and source fallback is disabled (set WABSIGNAL_ALLOW_SOURCE_FALLBACK=1 to enable)"
     fi
   fi
 
@@ -430,3 +430,4 @@ main() {
 }
 
 main "$@"
+

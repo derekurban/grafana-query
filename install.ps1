@@ -15,42 +15,42 @@ function Get-EnvValue {
   return $Default
 }
 
-$Repo = Get-EnvValue -Names @("GRAFQUERY_REPO", "GRAFANA_QUERY_REPO") -Default "derekurban/grafana-query"
-$OfficialRepo = "derekurban/grafana-query"
-$LegacyRepo = "derekurban2001/grafana-query"
-$ModulePath = Get-EnvValue -Names @("GRAFQUERY_MODULE_PATH", "GRAFANA_QUERY_MODULE_PATH") -Default "github.com/$Repo"
-$BinaryBase = "grafquery"
-$BinaryName = "grafquery.exe"
-$OwnershipMarkerMagic = "grafquery-owned-binary-v1"
+$Repo = Get-EnvValue -Names @("WABSIGNAL_REPO", "GRAFQUERY_REPO", "GRAFANA_QUERY_REPO") -Default "derekurban/wabii-signal"
+$OfficialRepo = "derekurban/wabii-signal"
+$LegacyRepo = "derekurban/grafana-query"
+$ModulePath = Get-EnvValue -Names @("WABSIGNAL_MODULE_PATH", "GRAFQUERY_MODULE_PATH", "GRAFANA_QUERY_MODULE_PATH") -Default "github.com/$Repo"
+$BinaryBase = "wabsignal"
+$BinaryName = "wabsignal.exe"
+$OwnershipMarkerMagic = "wabsignal-owned-binary-v1"
 
-$InstallDir = Get-EnvValue -Names @("GRAFQUERY_INSTALL_DIR", "GRAFANA_QUERY_INSTALL_DIR") -Default (Join-Path $HOME ".local\bin")
-$Version = Get-EnvValue -Names @("GRAFQUERY_VERSION", "GRAFANA_QUERY_VERSION") -Default "latest"
-$AutoPathRaw = Get-EnvValue -Names @("GRAFQUERY_AUTO_PATH", "GRAFANA_QUERY_AUTO_PATH") -Default "1"
-$VerifySignaturesRaw = Get-EnvValue -Names @("GRAFQUERY_VERIFY_SIGNATURES", "GRAFANA_QUERY_VERIFY_SIGNATURES") -Default "1"
-$AllowSourceFallbackRaw = Get-EnvValue -Names @("GRAFQUERY_ALLOW_SOURCE_FALLBACK", "GRAFANA_QUERY_ALLOW_SOURCE_FALLBACK") -Default "0"
-$AutoInstallGoRaw = Get-EnvValue -Names @("GRAFQUERY_AUTO_INSTALL_GO", "GRAFANA_QUERY_AUTO_INSTALL_GO") -Default "1"
-$CosignVersion = Get-EnvValue -Names @("GRAFQUERY_COSIGN_VERSION", "GRAFANA_QUERY_COSIGN_VERSION") -Default "v2.5.3"
-$DefaultCosignIdentityRegex = if ($Repo -eq $OfficialRepo -or $Repo -eq $LegacyRepo) {
-  "^https://github.com/(derekurban/grafana-query|derekurban2001/grafana-query)/.github/workflows/release.yml@refs/tags/.*$"
+$InstallDir = Get-EnvValue -Names @("WABSIGNAL_INSTALL_DIR", "GRAFQUERY_INSTALL_DIR", "GRAFANA_QUERY_INSTALL_DIR") -Default (Join-Path $HOME ".local\bin")
+$Version = Get-EnvValue -Names @("WABSIGNAL_VERSION", "GRAFQUERY_VERSION", "GRAFANA_QUERY_VERSION") -Default "latest"
+$AutoPathRaw = Get-EnvValue -Names @("WABSIGNAL_AUTO_PATH", "GRAFQUERY_AUTO_PATH", "GRAFANA_QUERY_AUTO_PATH") -Default "1"
+$VerifySignaturesRaw = Get-EnvValue -Names @("WABSIGNAL_VERIFY_SIGNATURES", "GRAFQUERY_VERIFY_SIGNATURES", "GRAFANA_QUERY_VERIFY_SIGNATURES") -Default "1"
+$AllowSourceFallbackRaw = Get-EnvValue -Names @("WABSIGNAL_ALLOW_SOURCE_FALLBACK", "GRAFQUERY_ALLOW_SOURCE_FALLBACK", "GRAFANA_QUERY_ALLOW_SOURCE_FALLBACK") -Default "0"
+$AutoInstallGoRaw = Get-EnvValue -Names @("WABSIGNAL_AUTO_INSTALL_GO", "GRAFQUERY_AUTO_INSTALL_GO", "GRAFANA_QUERY_AUTO_INSTALL_GO") -Default "1"
+$CosignVersion = Get-EnvValue -Names @("WABSIGNAL_COSIGN_VERSION", "GRAFQUERY_COSIGN_VERSION", "GRAFANA_QUERY_COSIGN_VERSION") -Default "v2.5.3"
+$DefaultCosignIdentityRegex = if ($Repo -eq $OfficialRepo -or $Repo -eq $LegacyRepo -or $Repo -eq "derekurban2001/grafana-query") {
+  "^https://github.com/(derekurban/wabii-signal|derekurban/grafana-query|derekurban2001/grafana-query)/.github/workflows/release.yml@refs/tags/.*$"
 } else {
   "^https://github.com/$Repo/.github/workflows/release.yml@refs/tags/.*$"
 }
-$CosignIdentityRegex = Get-EnvValue -Names @("GRAFQUERY_COSIGN_IDENTITY_RE", "GRAFANA_QUERY_COSIGN_IDENTITY_RE") -Default $DefaultCosignIdentityRegex
-$CosignOidcIssuer = Get-EnvValue -Names @("GRAFQUERY_COSIGN_OIDC_ISSUER", "GRAFANA_QUERY_COSIGN_OIDC_ISSUER") -Default "https://token.actions.githubusercontent.com"
+$CosignIdentityRegex = Get-EnvValue -Names @("WABSIGNAL_COSIGN_IDENTITY_RE", "GRAFQUERY_COSIGN_IDENTITY_RE", "GRAFANA_QUERY_COSIGN_IDENTITY_RE") -Default $DefaultCosignIdentityRegex
+$CosignOidcIssuer = Get-EnvValue -Names @("WABSIGNAL_COSIGN_OIDC_ISSUER", "GRAFQUERY_COSIGN_OIDC_ISSUER", "GRAFANA_QUERY_COSIGN_OIDC_ISSUER") -Default "https://token.actions.githubusercontent.com"
 
 function Write-Log {
   param([string]$Message)
-  Write-Host "[grafquery-install] $Message"
+  Write-Host "[wabsignal-install] $Message"
 }
 
 function Write-WarnMessage {
   param([string]$Message)
-  Write-Warning "[grafquery-install] $Message"
+  Write-Warning "[wabsignal-install] $Message"
 }
 
 function Fail {
   param([string]$Message)
-  throw "[grafquery-install] ERROR: $Message"
+  throw "[wabsignal-install] ERROR: $Message"
 }
 
 function Test-Truthy {
@@ -199,7 +199,7 @@ function Get-OwnershipMarkerPath {
   param([Parameter(Mandatory = $true)][string]$BinaryPath)
   $dir = Split-Path -Path $BinaryPath -Parent
   $name = Split-Path -Path $BinaryPath -Leaf
-  return Join-Path $dir ".$name.grafquery-owner"
+  return Join-Path $dir ".$name.wabsignal-owner"
 }
 
 function Write-OwnershipMarker {
@@ -253,7 +253,7 @@ function Verify-ChecksumsSignature {
   )
 
   if (-not (Test-Truthy $VerifySignaturesRaw)) {
-    Write-WarnMessage "Signature verification disabled via GRAFQUERY_VERIFY_SIGNATURES=0"
+    Write-WarnMessage "Signature verification disabled via WABSIGNAL_VERIFY_SIGNATURES=0"
     return
   }
 
@@ -346,7 +346,7 @@ function Install-FromRelease {
           -SignaturePath $checksumsSigPath `
           -CertificatePath $checksumsCertPath
       } else {
-        Write-WarnMessage "Signature verification disabled via GRAFQUERY_VERIFY_SIGNATURES=0"
+        Write-WarnMessage "Signature verification disabled via WABSIGNAL_VERIFY_SIGNATURES=0"
       }
 
       foreach ($asset in $assets) {
@@ -513,7 +513,7 @@ function Main {
         Write-WarnMessage "Could not resolve latest release tag; using go install fallback"
         $resolvedVersion = $null
       } else {
-        Fail "Could not resolve latest release tag and source fallback is disabled (set GRAFQUERY_ALLOW_SOURCE_FALLBACK=1 to enable)."
+        Fail "Could not resolve latest release tag and source fallback is disabled (set WABSIGNAL_ALLOW_SOURCE_FALLBACK=1 to enable)."
       }
     } else {
       $resolvedVersion = $latest
@@ -529,7 +529,7 @@ function Main {
       Write-WarnMessage "Release install failed; using go install fallback"
       Install-WithGo -RequestedVersion $Version
     } else {
-      Fail "Release install failed and source fallback is disabled (set GRAFQUERY_ALLOW_SOURCE_FALLBACK=1 to enable)."
+      Fail "Release install failed and source fallback is disabled (set WABSIGNAL_ALLOW_SOURCE_FALLBACK=1 to enable)."
     }
   }
 
@@ -544,3 +544,4 @@ function Main {
 }
 
 Main
+

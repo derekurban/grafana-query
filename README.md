@@ -1,185 +1,150 @@
-# Grafana-Query (`grafquery`)
+# wabii-signal (`wabsignal`)
 
-Unified observability CLI for the Grafana stack.
+Hosted Grafana CLI for application debugging evidence.
 
-- One token, one config, one tool
-- Native query languages remain native (LogQL / PromQL / TraceQL)
-- Pipe-friendly output (`json`, `table`, `csv`, `raw`)
-
-## Implemented phases
-
-### Phase 1 — Foundation
-- [x] Config contexts: `~/.config/grafquery/config.yaml`
-- [x] `grafquery init` with datasource discovery (`/api/datasources`)
-- [x] Signal commands: `logs`, `metrics`, `traces`
-- [x] Raw datasource query: `grafquery query`
-
-### Phase 2 — Correlation core
-- [x] `grafquery correlate --trace-id <id>`
-- [x] `grafquery correlate --service <name>`
-- [x] Parallel fan-out query execution across logs/metrics/traces
-
-### Phase 3 — Dashboard integration
-- [x] `grafquery dash list`
-- [x] `grafquery dash run <uid> --panel "..."`
+- Grafana HTTP API for reads
+- OTLP endpoint for writes
+- Machine-global hosted setup with per-project write tokens
+- Agent-friendly CLI for logs, metrics, traces, and correlation
 
 ## Install
 
-### One-command install (recommended)
+### One-command install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/derekurban/grafana-query/main/install.sh | bash
-```
-
-PowerShell (Windows):
-
-```powershell
-irm https://raw.githubusercontent.com/derekurban/grafana-query/main/install.ps1 | iex
-```
-
-Installer supports secure release verification and controlled fallback options.
-See: [`docs/INSTALL.md`](docs/INSTALL.md)
-
-### Go install
-
-```bash
-go install github.com/derekurban/grafana-query@latest
-```
-
-### npm install
-
-```bash
-npm install -g grafquery
-```
-
-The npm installer also installs `grafquery`/`grafquery.exe` into `~/.local/bin` and will attempt to add that directory to your user `PATH` automatically.
-
-### Local observability stack (Docker)
-
-```bash
-grafquery local setup
-```
-
-This interactive setup boots a local Grafana + Loki + Prometheus + Tempo stack, exposes OTLP ingest endpoints, creates a Grafana service token, and writes a ready-to-use `grafquery` context.
-During setup you can accept the default Grafana admin credentials (`admin` / `password`) or provide your own.
-
-## Releasing
-
-Releases are tag-driven via [`.github/workflows/release.yml`](.github/workflows/release.yml).
-Pushing a semantic version tag like `v0.1.0` triggers:
-
-- `go test ./...`
-- GoReleaser builds and archives for Linux/macOS/Windows (`amd64`, `arm64`)
-- `checksums.txt` generation
-- Sigstore `cosign` signing of checksums (`checksums.txt.sig`, `checksums.txt.pem`)
-- GitHub Release publish with artifacts
-- npm publish of `grafquery` when `NPM_TOKEN` is configured in repo secrets
-
-### Create the next tag
-
-Bash:
-
-```bash
-./scripts/release/bump-tag.sh --patch
+curl -fsSL https://raw.githubusercontent.com/derekurban/wabii-signal/main/install.sh | bash
 ```
 
 PowerShell:
 
 ```powershell
-./scripts/release/bump-tag.ps1 --patch
+irm https://raw.githubusercontent.com/derekurban/wabii-signal/main/install.ps1 | iex
 ```
 
-You can replace `--patch` with `--minor` or `--major`.
+See [docs/INSTALL.md](docs/INSTALL.md) for environment variables and fallback behavior.
 
-## Local stack commands
-
-- `grafquery local setup` (interactive TUI-style bootstrap)
-- `grafquery local up`
-- `grafquery local down`
-- `grafquery local reset <logs|metrics|traces|all>` (clears stored telemetry data for selected backend(s))
-- `grafquery local status`
-- `grafquery local info` (shows OTLP endpoints + Grafana URL/username/password/service token)
-- `grafquery local purge` (removes containers, volumes, local files, and local context)
-
-## Local e2e smoke test
-
-PowerShell (Windows):
-
-```powershell
-./scripts/e2e-local-stack.ps1 -PurgeFirst
-```
-
-This script validates the full local flow:
-- installs/builds `grafquery`
-- runs `grafquery local setup`
-- authenticates to the emitted Grafana URL using the emitted service token
-- sends one metric + one trace to local OTLP HTTP
-- pushes one labeled log entry to local Loki (`app` + `test_run`)
-- verifies metrics/traces through `grafquery` and log label queryability through Grafana's datasource API
-
-## Quick start
+### Go install
 
 ```bash
-# initialize
-
-grafquery init --url https://grafana.company.io --token "$GRAFANA_TOKEN" --context-name production
-
-# run queries
-grafquery logs '{service="api"} |= "error"' --since 30m
-grafquery metrics 'up{job="api"}' --output table
-grafquery traces '{ resource.service.name = "api" && duration > 1s }'
-
-# correlate
-grafquery correlate --trace-id abc123def --since 30m
-grafquery correlate --service api-gateway --since 30m
-
-# dashboards
-grafquery dash list
-grafquery dash run abc123 --panel "Error Rate"
+go install github.com/derekurban/wabii-signal@latest
 ```
 
-## Config example
+### npm install
 
-```yaml
-current-context: production
-contexts:
-  production:
-    grafana:
-      url: https://grafana.company.io
-      token: ${GRAFANA_TOKEN}
-    sources:
-      logs: grafanacloud-logs
-      metrics: grafanacloud-prom
-      traces: grafanacloud-traces
-    defaults:
-      since: 1h
-      limit: 100
-      output: auto
-      labels:
-        cluster: prod-us-east-1
-aliases:
-  errors: '{level="error"}'
+```bash
+npm install -g wabsignal
 ```
 
-## Commands
+## Hosted setup
 
-- `grafquery init`
-- `grafquery config current|list|use|set-source`
-- `grafquery logs <query>`
-- `grafquery metrics <query>`
-- `grafquery traces <query>`
-- `grafquery traces get <trace-id>`
-- `grafquery query <expr> --source <uid|name>`
-- `grafquery correlate --trace-id <id>`
-- `grafquery correlate --service <svc>`
-- `grafquery dash list`
-- `grafquery dash run <dashboard-uid>`
-- `grafquery local setup|up|down|reset|status|info|purge`
+`wabsignal setup` is required before any project or query commands can run.
+
+Use either the stack URL or the stack name:
+
+```bash
+wabsignal setup \
+  --mode restrictive \
+  --stack-name your-stack-id \
+  --otlp-endpoint https://otlp-gateway-prod-us-central-0.grafana.net/otlp \
+  --otlp-instance-id 123456 \
+  --query-token "$GRAFANA_SERVICE_ACCOUNT_TOKEN"
+```
+
+If you already have the full read endpoint base URL, use:
+
+```bash
+wabsignal setup \
+  --mode restrictive \
+  --grafana-api-url https://your-stack-id.grafana.net/api/ds/query \
+  --otlp-endpoint https://otlp-gateway-prod-us-central-0.grafana.net/otlp \
+  --otlp-instance-id 123456 \
+  --query-token "$GRAFANA_SERVICE_ACCOUNT_TOKEN"
+```
+
+`wabsignal` normalizes that URL to the stack base URL and queries Grafana through `POST https://<stack>.grafana.net/api/ds/query`.
+
+### Full-access mode
+
+In `full-access`, setup also stores a Grafana Cloud access-policy management token in the OS keyring and requires the Cloud stack ID and region:
+
+```bash
+wabsignal setup \
+  --mode full-access \
+  --stack-name your-stack-id \
+  --otlp-endpoint https://otlp-gateway-prod-us-central-0.grafana.net/otlp \
+  --otlp-instance-id 123456 \
+  --query-token "$GRAFANA_SERVICE_ACCOUNT_TOKEN" \
+  --policy-token "$GRAFANA_CLOUD_POLICY_TOKEN" \
+  --cloud-stack-id 654321 \
+  --cloud-region us
+```
+
+`wabsignal setup --output json` emits machine-readable setup state. In `full-access`, setup also performs an OTLP smoke test using a temporary managed write token. In `restrictive`, OTLP write validation is deferred until a project write token is attached.
+
+## Project workflow
+
+Create a project with one primary write target and optional extra read-scope services:
+
+```bash
+wabsignal project create shop-api shop-api shop-worker shop-web
+```
+
+In restrictive mode, provide a write token directly or let the command prompt for it:
+
+```bash
+wabsignal project create shop-api shop-api --write-token "$GRAFANA_WRITE_TOKEN"
+```
+
+Emit bootstrap variables for a local app:
+
+```bash
+wabsignal project env shop-api --format dotenv
+```
+
+That prints:
+
+- `OTEL_EXPORTER_OTLP_ENDPOINT`
+- `OTEL_EXPORTER_OTLP_HEADERS`
+- `OTEL_SERVICE_NAME`
+- `OTEL_RESOURCE_ATTRIBUTES`
+
+Useful lifecycle commands:
+
+```bash
+wabsignal doctor
+wabsignal run start
+wabsignal run show
+wabsignal run stop
+wabsignal project set-source shop-api traces <tempo-uid>
+wabsignal project set-scope shop-api --logs-service-label service_name
+wabsignal project delete shop-api --yes
+```
+
+Most lifecycle commands also support `--output json` for agent-friendly automation.
+
+## Query workflow
+
+```bash
+wabsignal logs '{} |= "error"' --since 30m
+wabsignal metrics 'sum(rate(http_server_duration_seconds_count[5m]))'
+wabsignal traces '{}'
+wabsignal correlate --trace-id 4f4a6e3f7b1f4c9c
+```
+
+By default, reads are scoped to the project's primary and extra services. Use `--no-project-scope` when you need to bypass that.
+
+If a run scope is active through `wabsignal run start`, reads are also narrowed to that run ID by default.
 
 ## Notes
 
-- Grafana is the single gateway (`/api/ds/query`), so credentials and audit are centralized.
-- `grafquery` is read-only by design.
+- Read access uses a Grafana service account token stored in the OS keyring.
+- Full-access mode stores the Grafana Cloud policy-management token in the OS keyring.
+- Per-project write tokens are stored in the config file by design.
+- Grafana Cloud label policies constrain read scopes for logs and metrics, not write scopes. `wabsignal` enforces write intent through the emitted OTEL identity and CLI-side project scoping.
+
+## Releasing
+
+Releases are tag-driven through [`.github/workflows/release.yml`](.github/workflows/release.yml) and [`.goreleaser.yaml`](.goreleaser.yaml).
 
 ## License
 

@@ -1,13 +1,12 @@
-package grafquery
+package wabsignal
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/derekurban/grafana-query/internal/grafana"
-	"github.com/derekurban/grafana-query/internal/util"
+	"github.com/derekurban/wabii-signal/internal/grafana"
+	"github.com/derekurban/wabii-signal/internal/util"
 	"github.com/spf13/cobra"
 )
 
@@ -15,19 +14,19 @@ func newSignalCmd(opts *GlobalOptions, signal string) *cobra.Command {
 	var since, from, to string
 	var limit int
 	var follow bool
-	var noDefaults bool
 	var watchEvery time.Duration
 	var instant bool
+	var noProjectScope bool
 
 	cmd := &cobra.Command{
 		Use:   signal + " <query>",
-		Short: fmt.Sprintf("Run %s queries through Grafana", signal),
+		Short: fmt.Sprintf("Run %s queries through Grafana HTTP API", signal),
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if watchEvery > 0 {
-				return runSignalWatch(opts, signal, args[0], since, from, to, limit, noDefaults, instant, watchEvery)
+				return runSignalWatch(opts, signal, args[0], since, from, to, limit, instant, watchEvery, noProjectScope)
 			}
-			return runSignalOnce(opts, signal, args[0], since, from, to, limit, noDefaults, instant)
+			return runSignalOnce(opts, signal, args[0], since, from, to, limit, instant, noProjectScope)
 		},
 	}
 
@@ -35,15 +34,14 @@ func newSignalCmd(opts *GlobalOptions, signal string) *cobra.Command {
 		cmd.AddCommand(newTracesGetCmd(opts))
 	}
 
-	cmd.Flags().StringVar(&since, "since", "", "Lookback range (default from context or 1h)")
+	cmd.Flags().StringVar(&since, "since", "", "Lookback range (default from project or 1h)")
 	cmd.Flags().StringVar(&from, "from", "", "From timestamp")
 	cmd.Flags().StringVar(&to, "to", "", "To timestamp")
-	cmd.Flags().IntVar(&limit, "limit", 0, "Limit result lines/rows")
+	cmd.Flags().IntVar(&limit, "limit", 0, "Limit result lines or rows")
 	cmd.Flags().BoolVar(&follow, "follow", false, "Alias for --watch 3s")
-	cmd.Flags().DurationVar(&watchEvery, "watch", 0, "Re-run query every interval (e.g. 10s)")
-	cmd.Flags().BoolVar(&noDefaults, "no-defaults", false, "Disable alias expansion and default label injection")
+	cmd.Flags().DurationVar(&watchEvery, "watch", 0, "Re-run query every interval (for example 10s)")
 	cmd.Flags().BoolVar(&instant, "instant", signal == "metrics", "Instant query mode")
-
+	cmd.Flags().BoolVar(&noProjectScope, "no-project-scope", false, "Disable automatic project service scoping")
 	cmd.PreRun = func(cmd *cobra.Command, args []string) {
 		if follow && watchEvery <= 0 {
 			watchEvery = 3 * time.Second
@@ -52,34 +50,28 @@ func newSignalCmd(opts *GlobalOptions, signal string) *cobra.Command {
 	return cmd
 }
 
-func runSignalOnce(opts *GlobalOptions, signal, expr, since, from, to string, limit int, noDefaults, instant bool) error {
-	cl, c, ctxCfg, _, err := buildClient(opts)
+func runSignalOnce(opts *GlobalOptions, signal, expr, since, from, to string, limit int, instant, noProjectScope bool) error {
+	cl, config, project, _, err := buildClient(opts)
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
+	ctx, cancel := timeoutContext(35)
 	defer cancel()
 
-	ds, err := resolveSignalSource(ctx, cl, signal, ctxCfg)
+	ds, err := resolveSignalSource(ctx, cl, signal, config, project)
 	if err != nil {
 		return err
 	}
 
-	if !noDefaults {
-		expr = maybeApplyAliasAndLabels(expr, signal, c, ctxCfg)
-	}
-	if since == "" {
-		since = ctxCfg.Defaults.Since
+	expr = applyProjectScope(signal, expr, project, noProjectScope)
+	if strings.TrimSpace(since) == "" {
+		since = project.Defaults.Since
 	}
 	if limit <= 0 {
-		if ctxCfg.Defaults.Limit > 0 {
-			limit = ctxCfg.Defaults.Limit
-		} else {
-			limit = 100
-		}
+		limit = project.Defaults.Limit
 	}
-	if signal == "traces" && limit == 0 {
-		limit = 20
+	if limit <= 0 {
+		limit = 100
 	}
 
 	f, t, err := util.ResolveGrafanaRange(since, from, to)
@@ -87,15 +79,15 @@ func runSignalOnce(opts *GlobalOptions, signal, expr, since, from, to string, li
 		return err
 	}
 
-	qType := "range"
+	queryType := "range"
 	if instant || signal == "metrics" {
-		qType = "instant"
+		queryType = "instant"
 	}
 	payload := grafana.QueryPayload{
 		RefID:      "A",
 		Datasource: map[string]any{"uid": ds.UID, "type": ds.Type},
 		Expr:       strings.TrimSpace(expr),
-		QueryType:  qType,
+		QueryType:  queryType,
 		MaxLines:   limit,
 		Instant:    instant,
 	}
@@ -107,23 +99,22 @@ func runSignalOnce(opts *GlobalOptions, signal, expr, since, from, to string, li
 	rows, _ := grafana.FrameRows(resp)
 	mode := opts.Output
 	if mode == "auto" {
-		if d := strings.TrimSpace(ctxCfg.Defaults.Output); d != "" {
-			mode = d
-		} else {
+		mode = project.Defaults.Output
+		if strings.TrimSpace(mode) == "" || mode == "auto" {
 			mode = "table"
 		}
 	}
 	return renderByOutput(mode, resp, rows)
 }
 
-func runSignalWatch(opts *GlobalOptions, signal, expr, since, from, to string, limit int, noDefaults, instant bool, every time.Duration) error {
+func runSignalWatch(opts *GlobalOptions, signal, expr, since, from, to string, limit int, instant bool, every time.Duration, noProjectScope bool) error {
 	if every <= 0 {
 		every = 5 * time.Second
 	}
 	for {
 		fmt.Print("\033[H\033[2J")
-		fmt.Printf("[%s] %s — updated %s\n\n", signal, expr, time.Now().Format(time.RFC3339))
-		if err := runSignalOnce(opts, signal, expr, since, from, to, limit, noDefaults, instant); err != nil {
+		fmt.Printf("[%s] %s - updated %s\n\n", signal, expr, time.Now().Format(time.RFC3339))
+		if err := runSignalOnce(opts, signal, expr, since, from, to, limit, instant, noProjectScope); err != nil {
 			fmt.Println("error:", err)
 		}
 		time.Sleep(every)
@@ -147,23 +138,18 @@ func newTracesGetCmd(opts *GlobalOptions) *cobra.Command {
 }
 
 func runTraceGetByID(opts *GlobalOptions, traceID, since, from, to string, limit int) error {
-	cl, _, ctxCfg, _, err := buildClient(opts)
+	cl, config, project, _, err := buildClient(opts)
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
+	ctx, cancel := timeoutContext(35)
 	defer cancel()
 
-	ds, err := resolveSignalSource(ctx, cl, "traces", ctxCfg)
+	ds, err := resolveSignalSource(ctx, cl, "traces", config, project)
 	if err != nil {
 		return err
 	}
-
-	traceID = strings.TrimSpace(traceID)
-	if traceID == "" {
-		return fmt.Errorf("trace id is required")
-	}
-	if since == "" {
+	if strings.TrimSpace(since) == "" {
 		since = "24h"
 	}
 	if limit <= 0 {
@@ -180,11 +166,10 @@ func runTraceGetByID(opts *GlobalOptions, traceID, since, from, to string, limit
 		Datasource: map[string]any{"uid": ds.UID, "type": ds.Type},
 		QueryType:  "traceId",
 		Raw: map[string]any{
-			"query": traceID,
+			"query": strings.TrimSpace(traceID),
 			"limit": limit,
 		},
 	}
-
 	resp, err := cl.Query(ctx, grafana.QueryRequest{From: f, To: t, Queries: []grafana.QueryPayload{payload}})
 	if err != nil {
 		return err
@@ -192,9 +177,8 @@ func runTraceGetByID(opts *GlobalOptions, traceID, since, from, to string, limit
 	rows, _ := grafana.FrameRows(resp)
 	mode := opts.Output
 	if mode == "auto" {
-		if d := strings.TrimSpace(ctxCfg.Defaults.Output); d != "" {
-			mode = d
-		} else {
+		mode = project.Defaults.Output
+		if strings.TrimSpace(mode) == "" || mode == "auto" {
 			mode = "table"
 		}
 	}

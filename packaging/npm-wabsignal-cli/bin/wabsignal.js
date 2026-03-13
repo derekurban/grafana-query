@@ -4,11 +4,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 
-const binaryName = process.platform === "win32" ? "grafquery.exe" : "grafquery";
+const binaryName = process.platform === "win32" ? "wabsignal.exe" : "wabsignal";
 const binaryPath = path.join(__dirname, binaryName);
 
 if (!fs.existsSync(binaryPath)) {
-  console.error("grafquery binary is missing. Reinstall grafquery.");
+  console.error("wabsignal binary is missing. Reinstall wabsignal.");
   process.exit(1);
 }
 
@@ -20,3 +20,4 @@ if (result.error) {
 }
 
 process.exit(result.status ?? 1);
+

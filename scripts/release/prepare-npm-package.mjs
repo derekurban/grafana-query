@@ -13,10 +13,11 @@ if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(version)) {
   process.exit(1);
 }
 
-const packageJsonPath = path.join("packaging", "npm-grafquery-cli", "package.json");
+const packageJsonPath = path.join("packaging", "npm-wabsignal-cli", "package.json");
 const raw = fs.readFileSync(packageJsonPath, "utf8");
 const pkg = JSON.parse(raw);
 pkg.version = version;
 fs.writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`, "utf8");
 
 console.log(`Updated ${packageJsonPath} to version ${version}`);
+

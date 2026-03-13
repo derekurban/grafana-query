@@ -1,13 +1,11 @@
-package grafquery
+package wabsignal
 
 import (
-	"context"
 	"fmt"
 	"strings"
-	"time"
 
-	"github.com/derekurban/grafana-query/internal/grafana"
-	"github.com/derekurban/grafana-query/internal/util"
+	"github.com/derekurban/wabii-signal/internal/grafana"
+	"github.com/derekurban/wabii-signal/internal/util"
 	"github.com/spf13/cobra"
 )
 
@@ -22,14 +20,14 @@ func newQueryCmd(opts *GlobalOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "query <expr>",
-		Short: "Raw query to any Grafana datasource",
+		Short: "Run a raw Grafana datasource query through the stack HTTP API",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cl, _, _, _, err := buildClient(opts)
 			if err != nil {
 				return err
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := timeoutContext(30)
 			defer cancel()
 
 			sources, err := cl.GetDataSources(ctx)
@@ -40,7 +38,7 @@ func newQueryCmd(opts *GlobalOptions) *cobra.Command {
 				printDataSources(sources)
 				return nil
 			}
-			if describe != "" {
+			if strings.TrimSpace(describe) != "" {
 				ds, err := grafana.ResolveSourceByNameOrUID(sources, describe)
 				if err != nil {
 					return err
@@ -48,8 +46,7 @@ func newQueryCmd(opts *GlobalOptions) *cobra.Command {
 				fmt.Printf("UID: %s\nType: %s\nName: %s\nURL: %s\nDatabase: %s\nAccess: %s\n", ds.UID, ds.Type, ds.Name, ds.URL, ds.Database, ds.Access)
 				return nil
 			}
-
-			if source == "" {
+			if strings.TrimSpace(source) == "" {
 				return fmt.Errorf("--source is required")
 			}
 			ds, err := grafana.ResolveSourceByNameOrUID(sources, source)
@@ -68,15 +65,15 @@ func newQueryCmd(opts *GlobalOptions) *cobra.Command {
 				QueryType:  queryType,
 				MaxLines:   maxLines,
 			}
-			if rawPayload != "" {
+			if strings.TrimSpace(rawPayload) != "" {
 				rawMap, err := parseRawJSONMap(rawPayload)
 				if err != nil {
 					return fmt.Errorf("invalid --raw-payload: %w", err)
 				}
 				payload.Raw = rawMap
 				if payload.Expr == "" {
-					if e, ok := rawMap["expr"].(string); ok {
-						payload.Expr = e
+					if expr, ok := rawMap["expr"].(string); ok {
+						payload.Expr = expr
 					}
 				}
 			} else {
@@ -102,11 +99,11 @@ func newQueryCmd(opts *GlobalOptions) *cobra.Command {
 	cmd.Flags().StringVar(&source, "source", "", "Datasource name or UID")
 	cmd.Flags().StringVar(&from, "from", "", "From timestamp (RFC3339, unix ms, now-...)")
 	cmd.Flags().StringVar(&to, "to", "", "To timestamp (RFC3339, unix ms, now)")
-	cmd.Flags().StringVar(&since, "since", "1h", "Relative range lookback (e.g. 30m, 6h)")
+	cmd.Flags().StringVar(&since, "since", "1h", "Relative range lookback (for example 30m, 6h)")
 	cmd.Flags().StringVar(&queryType, "query-type", "range", "Query type hint (range|instant)")
 	cmd.Flags().StringVar(&rawPayload, "raw-payload", "", "Raw JSON object merged into query payload")
 	cmd.Flags().BoolVar(&listSources, "list-sources", false, "List datasources and exit")
-	cmd.Flags().StringVar(&describe, "describe", "", "Describe a datasource by UID/name")
+	cmd.Flags().StringVar(&describe, "describe", "", "Describe a datasource by UID or name")
 	cmd.Flags().IntVar(&maxLines, "max-lines", 100, "Max lines for log queries")
 	return cmd
 }

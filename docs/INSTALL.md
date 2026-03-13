@@ -3,66 +3,59 @@
 ## One-command install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/derekurban/grafana-query/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/derekurban/wabii-signal/main/install.sh | bash
 ```
 
 PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/derekurban/grafana-query/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/derekurban/wabii-signal/main/install.ps1 | iex
 ```
 
 The installer will:
 
-1. Try to download a matching binary from GitHub Releases
-2. Verify checksums (`checksums.txt`)
-3. Verify signed checksums with Sigstore/cosign (`checksums.txt.sig` + `checksums.txt.pem`)
-4. Install to your user-local bin directory and optionally update PATH
-
----
+1. Download the matching release asset from GitHub Releases.
+2. Verify `checksums.txt`.
+3. Verify the signed checksum payload when signature verification is enabled.
+4. Install `wabsignal` into your user-local bin directory and optionally update `PATH`.
 
 ## Installer environment variables
 
-- `GRAFQUERY_INSTALL_DIR` – install destination (default `~/.local/bin`)
-- `GRAFQUERY_VERSION` – `latest` (default) or specific tag (e.g. `v0.2.0`)
-- `GRAFQUERY_AUTO_PATH` – `1` default, add install dir to PATH; set `0` to disable
-- `GRAFQUERY_VERIFY_SIGNATURES` – `1` default, enforce cosign verification; set `0` to disable
-- `GRAFQUERY_ALLOW_SOURCE_FALLBACK` – `0` default; set `1` to allow `go install` fallback when no release binary exists
-- `GRAFQUERY_COSIGN_VERSION` – cosign version if cosign is not already installed (default `v2.5.3`)
-- `GRAFQUERY_COSIGN_IDENTITY_RE` – cert identity regex override for cosign verification
-- `GRAFQUERY_COSIGN_OIDC_ISSUER` – OIDC issuer override (default `https://token.actions.githubusercontent.com`)
+Preferred variables:
 
-Compatibility aliases are also accepted:
+- `WABSIGNAL_INSTALL_DIR`
+- `WABSIGNAL_VERSION`
+- `WABSIGNAL_AUTO_PATH`
+- `WABSIGNAL_VERIFY_SIGNATURES`
+- `WABSIGNAL_ALLOW_SOURCE_FALLBACK`
+- `WABSIGNAL_COSIGN_VERSION`
+- `WABSIGNAL_COSIGN_IDENTITY_RE`
+- `WABSIGNAL_COSIGN_OIDC_ISSUER`
 
-- `GRAFANA_QUERY_*` (same semantics as `GRAFQUERY_*`)
+Compatibility aliases are still accepted for one transition window:
 
----
+- `GRAFQUERY_*`
+- `GRAFANA_QUERY_*`
 
-## Fallback install (source)
-
-If you want fallback to source install (when release artifacts are unavailable):
+## Fallback install
 
 ```bash
-GRAFQUERY_ALLOW_SOURCE_FALLBACK=1 \
-  curl -fsSL https://raw.githubusercontent.com/derekurban/grafana-query/main/install.sh | bash
+WABSIGNAL_ALLOW_SOURCE_FALLBACK=1 \
+  curl -fsSL https://raw.githubusercontent.com/derekurban/wabii-signal/main/install.sh | bash
 ```
-
----
 
 ## Manual install from source
 
 ```bash
-git clone https://github.com/derekurban/grafana-query.git
-cd grafana-query
-go build -o grafquery .
-install -m 0755 grafquery ~/.local/bin/grafquery
+git clone https://github.com/derekurban/wabii-signal.git
+cd wabii-signal
+go build -o wabsignal .
+install -m 0755 wabsignal ~/.local/bin/wabsignal
 ```
-
----
 
 ## Verify install
 
 ```bash
-grafquery --help
-grafquery version
+wabsignal --help
+wabsignal version
 ```

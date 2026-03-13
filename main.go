@@ -1,7 +1,7 @@
 package main
 
-import "github.com/derekurban/grafana-query/cmd/grafquery"
+import "github.com/derekurban/wabii-signal/cmd/wabsignal"
 
 func main() {
-	grafquery.Execute()
+	wabsignal.Execute()
 }

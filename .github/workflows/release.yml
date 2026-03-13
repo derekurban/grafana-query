@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -71,6 +76,6 @@ jobs:
             exit 0
           fi
           npm publish
-        working-directory: packaging/npm-grafquery-cli
+        working-directory: packaging/npm-wabsignal-cli
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
