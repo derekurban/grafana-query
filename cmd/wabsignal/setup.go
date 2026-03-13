@@ -25,7 +25,7 @@ func newSetupCmd(opts *GlobalOptions) *cobra.Command {
 		managementToken string
 		cloudStackID    string
 		cloudRegion     string
-		cloudOrgSlug    string
+		cloudOrgID      string
 		nonInteractive  bool
 	)
 
@@ -44,6 +44,13 @@ When run in a terminal, setup launches a guided TUI wizard by default. Use
 --non-interactive only for explicit operator-driven scripting or CI-style
 provisioning where every required flag is already known.
 
+The guided setup flow starts with the Grafana organization ID, then walks the
+operator through the Grafana Cloud pages to open:
+
+- https://grafana.com/orgs/<org id>
+- https://grafana.com/orgs/<org id>/access-policies (full-access only)
+- https://<org id>.grafana.net/org/serviceaccounts/create
+
 Setup configures three distinct planes:
 
 1. Read plane: Grafana HTTP API URL plus a read token for querying logs,
@@ -51,7 +58,9 @@ Setup configures three distinct planes:
 2. Write plane: OTLP endpoint plus OTLP instance ID used later to build
    project-specific OTLP headers.
 3. Management plane: optional Grafana Cloud policy token, stack ID, and region
-   used only in full-access mode for managed project write tokens.
+   used only in full-access mode for managed project write tokens. The stack ID
+   is derived from the OTLP instance ID when possible, and the region is
+   derived from the OTLP endpoint when possible.
 `),
 		Example: strings.TrimSpace(`
   # Human-guided setup wizard (recommended)
@@ -97,7 +106,7 @@ Setup configures three distinct planes:
 					ManagementToken: managementToken,
 					CloudStackID:    cloudStackID,
 					CloudRegion:     cloudRegion,
-					CloudOrgSlug:    cloudOrgSlug,
+					OrgID:           cloudOrgID,
 				}
 				if err := runSetupWizard(state); err != nil {
 					return err
@@ -111,7 +120,7 @@ Setup configures three distinct planes:
 				managementToken = state.ManagementToken
 				cloudStackID = state.CloudStackID
 				cloudRegion = state.CloudRegion
-				cloudOrgSlug = state.CloudOrgSlug
+				cloudOrgID = state.OrgID
 			}
 
 			mode = cfg.NormalizeMode(mode)
@@ -150,13 +159,23 @@ Setup configures three distinct planes:
 				if err != nil {
 					return err
 				}
-				cloudStackID, err = promptOrValue(cloudStackID, "Grafana Cloud stack ID", false, nonInteractive)
-				if err != nil {
-					return err
+				if strings.TrimSpace(cloudStackID) == "" {
+					cloudStackID = strings.TrimSpace(otlpInstanceID)
 				}
-				cloudRegion, err = promptOrValue(cloudRegion, "Grafana Cloud region", false, nonInteractive)
-				if err != nil {
-					return err
+				if strings.TrimSpace(cloudRegion) == "" {
+					cloudRegion = deriveCloudRegionFromOTLPEndpoint(otlpEndpoint)
+				}
+				if strings.TrimSpace(cloudStackID) == "" {
+					cloudStackID, err = promptOrValue(cloudStackID, "Grafana Cloud stack ID", false, nonInteractive)
+					if err != nil {
+						return err
+					}
+				}
+				if strings.TrimSpace(cloudRegion) == "" {
+					cloudRegion, err = promptOrValue(cloudRegion, "Grafana Cloud region", false, nonInteractive)
+					if err != nil {
+						return err
+					}
 				}
 			}
 
@@ -180,7 +199,7 @@ Setup configures three distinct planes:
 				OTLPInstanceID: strings.TrimSpace(otlpInstanceID),
 				Sources:        discoveredSources,
 				Cloud: cfg.CloudSetupConfig{
-					OrgSlug: strings.TrimSpace(cloudOrgSlug),
+					OrgSlug: strings.TrimSpace(cloudOrgID),
 					StackID: strings.TrimSpace(cloudStackID),
 					Region:  strings.TrimSpace(cloudRegion),
 				},
@@ -294,8 +313,10 @@ Setup configures three distinct planes:
 	cmd.Flags().StringVar(&managementToken, "policy-token", "", "Grafana Cloud access-policy management token (full-access only)")
 	cmd.Flags().StringVar(&cloudStackID, "cloud-stack-id", "", "Grafana Cloud numeric stack ID")
 	cmd.Flags().StringVar(&cloudRegion, "cloud-region", "", "Grafana Cloud region")
-	cmd.Flags().StringVar(&cloudOrgSlug, "cloud-org-slug", "", "Grafana Cloud org slug (optional metadata)")
+	cmd.Flags().StringVar(&cloudOrgID, "org-id", "", "Grafana Cloud organization id or slug used for guided setup links and stored as metadata")
+	cmd.Flags().StringVar(&cloudOrgID, "cloud-org-slug", "", "Deprecated alias for --org-id")
 	cmd.Flags().BoolVar(&nonInteractive, "non-interactive", false, "Fail instead of prompting for missing values")
+	_ = cmd.Flags().MarkHidden("cloud-org-slug")
 	return cmd
 }
 
@@ -345,6 +366,25 @@ func setupSecretSummary(mode, queryToken, managementToken string) map[string]any
 		summary["policy_token"] = redactSecret(managementToken)
 	}
 	return summary
+}
+
+func deriveCloudRegionFromOTLPEndpoint(endpoint string) string {
+	parsed, err := url.Parse(strings.TrimSpace(endpoint))
+	if err != nil {
+		return ""
+	}
+	host := strings.TrimSpace(parsed.Hostname())
+	if host == "" {
+		return ""
+	}
+	const prefix = "otlp-gateway-"
+	const suffix = ".grafana.net"
+	if !strings.HasPrefix(host, prefix) || !strings.HasSuffix(host, suffix) {
+		return ""
+	}
+	region := strings.TrimPrefix(host, prefix)
+	region = strings.TrimSuffix(region, suffix)
+	return strings.TrimSpace(region)
 }
 
 func validateFullAccessSetupWritePath(ctx context.Context, setup cfg.SetupConfig, managementToken string, readClient *grafana.Client, sources []grafana.DataSource) (*traceSmokeResult, error) {

@@ -53,9 +53,23 @@ TUI wizard by default. Use `--non-interactive` only for explicit operator
 automation where every required flag is already known.
 
 The setup wizard now includes explicit guidance on where to find each required
-Grafana Cloud value, including the stack name, read token, OTLP endpoint,
-OTLP instance ID, and the extra access-policy fields needed for full-access
-mode.
+Grafana Cloud value. It starts with the Grafana organization ID and then walks
+the operator through:
+
+- `https://grafana.com/orgs/<org id>`
+- `https://grafana.com/orgs/<org id>/access-policies` in full-access mode
+- `https://<org id>.grafana.net/org/serviceaccounts/create`
+
+From there it asks the human to copy:
+
+- stack name
+- OTLP endpoint
+- OTLP instance ID
+- Viewer service-account token
+- full-access policy token when applicable
+
+In full-access mode, `wabsignal` derives the stack ID from the OTLP instance ID
+and derives the Cloud region from the OTLP endpoint when possible.
 
 Use either the stack URL or the stack name:
 
