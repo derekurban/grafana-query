@@ -21,6 +21,8 @@ func newSignalCmd(opts *GlobalOptions, signal string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   signal + " <query>",
 		Short: fmt.Sprintf("Run %s queries through Grafana HTTP API", signal),
+		Long: signalLongHelp(signal),
+		Example: signalExampleHelp(signal),
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if watchEvery > 0 {
@@ -183,4 +185,60 @@ func runTraceGetByID(opts *GlobalOptions, traceID, since, from, to string, limit
 		}
 	}
 	return renderByOutput(mode, resp, rows)
+}
+
+func signalLongHelp(signal string) string {
+	switch signal {
+	case "logs":
+		return strings.TrimSpace(`
+Run LogQL-style log queries through the configured Grafana logs datasource.
+
+By default, wabii-signal injects project service scope and current run scope
+into the query when a project/run is active. Use --no-project-scope when you
+need to inspect the broader stack.
+`)
+	case "metrics":
+		return strings.TrimSpace(`
+Run metric queries through the configured Grafana metrics datasource.
+
+Metrics default to instant mode because most debugging use cases want the
+current answer rather than a full chart. You can still change the range and
+watch the query repeatedly during live debugging.
+`)
+	case "traces":
+		return strings.TrimSpace(`
+Run trace queries through the configured Grafana traces datasource.
+
+Like the other signal commands, traces are automatically scoped by project
+service and current run when that metadata is available. Use "traces get" to
+retrieve a specific trace by ID.
+`)
+	default:
+		return ""
+	}
+}
+
+func signalExampleHelp(signal string) string {
+	switch signal {
+	case "logs":
+		return strings.TrimSpace(`
+  wabsignal logs '{} |= "error"' --since 30m
+  wabsignal logs '{service_name="shop-api"} |= "timeout"' --no-project-scope
+  wabsignal logs '{} |= "panic"' --watch 5s
+`)
+	case "metrics":
+		return strings.TrimSpace(`
+  wabsignal metrics 'sum(rate(http_server_duration_seconds_count[5m]))'
+  wabsignal metrics 'histogram_quantile(0.95, sum(rate(http_server_duration_seconds_bucket[5m])) by (le, service_name))'
+  wabsignal metrics 'up' --watch 10s
+`)
+	case "traces":
+		return strings.TrimSpace(`
+  wabsignal traces '{}'
+  wabsignal traces '{ resource.service.name = "shop-api" }' --no-project-scope
+  wabsignal traces get 4f4a6e3f7b1f4c9c --since 24h
+`)
+	default:
+		return ""
+	}
 }

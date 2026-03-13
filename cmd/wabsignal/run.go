@@ -2,6 +2,7 @@ package wabsignal
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/derekurban/wabii-signal/internal/cfg"
@@ -13,6 +14,19 @@ func newRunCmd(opts *GlobalOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Manage the current project run/session scope",
+		Long: strings.TrimSpace(`
+Manage the current project run/session scope.
+
+The active run ID is injected into OTLP bootstrap output and is also used by
+default read-side query scoping. This gives both humans and agents a tighter
+loop for "make a change -> exercise the app -> inspect only this run".
+`),
+		Example: strings.TrimSpace(`
+  wabsignal run start
+  wabsignal run start qa-pass-17
+  wabsignal run show
+  wabsignal run stop
+`),
 	}
 
 	cmd.AddCommand(&cobra.Command{

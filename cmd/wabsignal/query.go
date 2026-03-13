@@ -21,6 +21,27 @@ func newQueryCmd(opts *GlobalOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "query <expr>",
 		Short: "Run a raw Grafana datasource query through the stack HTTP API",
+		Long: strings.TrimSpace(`
+Run a low-level Grafana datasource query through the stack HTTP API.
+
+This is an escape hatch for advanced cases where the higher-level logs,
+metrics, traces, and correlate commands are not expressive enough. It is best
+suited for humans or advanced agent tooling that already understands Grafana's
+datasource payload model.
+`),
+		Example: strings.TrimSpace(`
+  # List datasource UIDs so you can target a raw query
+  wabsignal query --list-sources
+
+  # Describe one datasource by UID or name
+  wabsignal query --describe tempo
+
+  # Run a raw query against a chosen datasource
+  wabsignal query '{}' --source loki --since 30m
+
+  # Send a custom Grafana datasource payload
+  wabsignal query --source tempo --query-type traceId --raw-payload '{"query":"4f4a6e3f7b1f4c9c","limit":20}'
+`),
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cl, _, _, _, err := buildClient(opts)

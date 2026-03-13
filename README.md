@@ -39,6 +39,15 @@ npm install -g wabsignal
 
 `wabsignal setup` is required before any project or query commands can run.
 
+Important: setup is a human-only machine bootstrap step. A human operator
+should run it once on the machine and confirm the credentials. After that,
+agents can use `project env`, `run`, `doctor`, `logs`, `metrics`, `traces`,
+`query`, and `correlate`.
+
+When run in an interactive terminal, `wabsignal setup` now launches a guided
+TUI wizard by default. Use `--non-interactive` only for explicit operator
+automation where every required flag is already known.
+
 Use either the stack URL or the stack name:
 
 ```bash

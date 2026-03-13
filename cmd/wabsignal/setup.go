@@ -32,7 +32,88 @@ func newSetupCmd(opts *GlobalOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "setup",
 		Short: "Configure hosted Grafana HTTP API access and OTLP ingest",
+		Long: strings.TrimSpace(`
+Human-only machine bootstrap for wabii-signal.
+
+This command is intended to be run by a human operator, not by a coding agent.
+Its job is to connect this machine to a Grafana stack, store the global read
+credential in the OS keyring, and optionally store a Grafana Cloud management
+credential for automatic write-token lifecycle in full-access mode.
+
+When run in a terminal, setup launches a guided TUI wizard by default. Use
+--non-interactive only for explicit operator-driven scripting or CI-style
+provisioning where every required flag is already known.
+
+Setup configures three distinct planes:
+
+1. Read plane: Grafana HTTP API URL plus a read token for querying logs,
+   metrics, and traces.
+2. Write plane: OTLP endpoint plus OTLP instance ID used later to build
+   project-specific OTLP headers.
+3. Management plane: optional Grafana Cloud policy token, stack ID, and region
+   used only in full-access mode for managed project write tokens.
+`),
+		Example: strings.TrimSpace(`
+  # Human-guided setup wizard (recommended)
+  wabsignal setup
+
+  # Restrictive mode with explicit stack name
+  wabsignal setup \
+    --mode restrictive \
+    --stack-name my-stack \
+    --otlp-endpoint https://otlp-gateway-prod-us-central-0.grafana.net/otlp \
+    --otlp-instance-id 123456 \
+    --query-token "$GRAFANA_SERVICE_ACCOUNT_TOKEN"
+
+  # Full-access mode using the raw Grafana read URL
+  wabsignal setup \
+    --mode full-access \
+    --grafana-api-url https://my-stack.grafana.net/api/ds/query \
+    --otlp-endpoint https://otlp-gateway-prod-us-central-0.grafana.net/otlp \
+    --otlp-instance-id 123456 \
+    --query-token "$GRAFANA_SERVICE_ACCOUNT_TOKEN" \
+    --policy-token "$GRAFANA_CLOUD_POLICY_TOKEN" \
+    --cloud-stack-id 654321 \
+    --cloud-region us
+
+  # Scripted operator setup without the TUI
+  wabsignal setup \
+    --non-interactive \
+    --mode restrictive \
+    --stack-name my-stack \
+    --otlp-endpoint https://otlp-gateway-prod-us-central-0.grafana.net/otlp \
+    --otlp-instance-id 123456 \
+    --query-token "$GRAFANA_SERVICE_ACCOUNT_TOKEN"
+`),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if shouldUseSetupWizard(nonInteractive, opts.Output) {
+				state := &setupWizardState{
+					Mode:            mode,
+					GrafanaAPIURL:   grafanaAPIURL,
+					StackName:       stackName,
+					OTLPEndpoint:    otlpEndpoint,
+					OTLPInstanceID:  otlpInstanceID,
+					QueryToken:      queryToken,
+					ManagementToken: managementToken,
+					CloudStackID:    cloudStackID,
+					CloudRegion:     cloudRegion,
+					CloudOrgSlug:    cloudOrgSlug,
+				}
+				if err := runSetupWizard(state); err != nil {
+					return err
+				}
+				mode = state.Mode
+				grafanaAPIURL = state.GrafanaAPIURL
+				stackName = state.StackName
+				otlpEndpoint = state.OTLPEndpoint
+				otlpInstanceID = state.OTLPInstanceID
+				queryToken = state.QueryToken
+				managementToken = state.ManagementToken
+				cloudStackID = state.CloudStackID
+				cloudRegion = state.CloudRegion
+				cloudOrgSlug = state.CloudOrgSlug
+			}
+
 			mode = cfg.NormalizeMode(mode)
 			if mode == "" {
 				return fmt.Errorf("--mode must be %q or %q", cfg.ModeRestrictive, cfg.ModeFullAccess)

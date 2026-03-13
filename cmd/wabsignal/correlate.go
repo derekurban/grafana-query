@@ -22,6 +22,25 @@ func newCorrelateCmd(opts *GlobalOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "correlate",
 		Short: "Cross-signal correlation for a trace or project service",
+		Long: strings.TrimSpace(`
+Run a focused multi-signal investigation.
+
+Correlate has two main modes:
+
+- trace mode: fetch a specific trace, nearby matching logs, and a small metrics
+  presence query
+- service mode: fetch logs, traces, and metrics for one service or the current
+  project's primary service
+
+This is intended to be the quick "what happened across the signals?" command
+for both humans and agents.
+`),
+		Example: strings.TrimSpace(`
+  wabsignal correlate --trace-id 4f4a6e3f7b1f4c9c
+  wabsignal correlate --service shop-api --since 15m
+  wabsignal correlate --since 30m
+  wabsignal correlate --trace-id 4f4a6e3f7b1f4c9c --output json
+`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(traceID) == "" && strings.TrimSpace(service) == "" {
 				if noProjectScope {

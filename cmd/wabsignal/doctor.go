@@ -17,6 +17,26 @@ func newDoctorCmd(opts *GlobalOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "doctor",
 		Short: "Validate hosted Grafana access, datasource mappings, and OTLP write/read-back",
+		Long: strings.TrimSpace(`
+Validate the current machine setup and, when a project is selected, the
+project-specific write path.
+
+Doctor checks:
+
+- Grafana HTTP API reachability
+- logs/metrics/traces datasource resolution
+- project write-token presence
+- OTLP write and Grafana read-back using a smoke-test trace
+
+This is the fastest way to answer "is the stack configured correctly?" before
+debugging a real app run.
+`),
+		Example: strings.TrimSpace(`
+  wabsignal doctor
+  wabsignal doctor --project shop-api
+  wabsignal doctor --skip-smoke-test
+  wabsignal doctor --output json
+`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config, _, err := loadConfigFromFlags(opts)
 			if err != nil {

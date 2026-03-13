@@ -26,6 +26,35 @@ func newProjectCmd(opts *GlobalOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "project",
 		Short: "Manage projects and OTLP bootstrap state",
+		Long: strings.TrimSpace(`
+Manage project-level telemetry identity and write-token state.
+
+A project is wabii-signal's unit of scoping. It captures:
+
+- a primary service name used for OTLP bootstrap and default read scope
+- optional extra services that should be included in read-side queries
+- the datasource UID mapping for logs, metrics, and traces
+- query-scope label/attribute overrides
+- the per-project write token used when generating OTLP headers
+
+Humans typically create and curate projects. Agents usually consume project
+state via "project env", "run", and the read/query commands.
+`),
+		Example: strings.TrimSpace(`
+  # Create a project in restrictive mode with a manual write token
+  wabsignal project create shop-api shop-api --write-token "$GRAFANA_WRITE_TOKEN"
+
+  # Create a project with extra services included in read scope
+  wabsignal project create storefront shop-api shop-web shop-worker
+
+  # See or switch the active project
+  wabsignal project list
+  wabsignal project use storefront
+  wabsignal project show
+
+  # Emit OTLP environment for the current project
+  wabsignal project env --format dotenv
+`),
 	}
 
 	var createWriteToken string
@@ -33,6 +62,21 @@ func newProjectCmd(opts *GlobalOptions) *cobra.Command {
 	createCmd := &cobra.Command{
 		Use:   "create <project-name> <primary-service> [extra-services...]",
 		Short: "Create a project and attach its write token",
+		Long: strings.TrimSpace(`
+Create a project and validate that its write path works end to end.
+
+In restrictive mode, you provide the project write token manually.
+In full-access mode, wabii-signal creates a managed write token and stores the
+associated policy metadata so the token can be rotated or deleted later.
+
+Before the project is saved, wabii-signal sends an OTLP trace smoke test and
+waits for it to become queryable through Grafana. That keeps broken write-token
+or datasource setups from silently being accepted.
+`),
+		Example: strings.TrimSpace(`
+  wabsignal project create shop-api shop-api --write-token "$GRAFANA_WRITE_TOKEN"
+  wabsignal project create storefront shop-api shop-web shop-worker
+`),
 		Args:  cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config, path, err := loadConfigFromFlags(opts)
@@ -218,6 +262,25 @@ func newProjectCmd(opts *GlobalOptions) *cobra.Command {
 	envCmd := &cobra.Command{
 		Use:   "env [project]",
 		Short: "Emit OTLP bootstrap environment variables for a project",
+		Long: strings.TrimSpace(`
+Emit the OTLP environment needed to point an app at the current Grafana-backed
+wabii-signal setup.
+
+The output includes:
+
+- OTEL_EXPORTER_OTLP_ENDPOINT
+- OTEL_EXPORTER_OTLP_HEADERS
+- OTEL_SERVICE_NAME
+- OTEL_RESOURCE_ATTRIBUTES
+
+If a project run scope is active, WABSIGNAL_RUN_ID is also emitted so the app
+can stamp telemetry for the current debugging session.
+`),
+		Example: strings.TrimSpace(`
+  wabsignal project env
+  wabsignal project env shop-api --format dotenv
+  wabsignal project env shop-api --format json
+`),
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config, _, err := loadConfigFromFlags(opts)
