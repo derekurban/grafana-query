@@ -62,7 +62,7 @@ wabsignal setup is a human-only machine bootstrap.
 Have these Grafana values ready before continuing:
 
 - Stack name or Grafana stack URL
-- Grafana service account token for read/query access
+- Grafana stack service-account token for read/query access
 - Grafana OTLP endpoint
 - Grafana OTLP instance ID
 
@@ -88,7 +88,8 @@ Typical places to copy values from in Grafana Cloud:
   Usually the subdomain in https://<stack>.grafana.net
 
 - Grafana read token:
-  Create a service account token for Grafana HTTP API reads
+  Create a Grafana stack service-account token for Grafana HTTP API reads.
+  Do not use a Grafana Cloud access-policy token here.
 
 - OTLP endpoint and instance ID:
   Found in the Grafana Cloud OTLP/OpenTelemetry connection instructions
@@ -133,7 +134,7 @@ Grafana API URL instead of using the stack name.
 				Validate(required("OTLP instance ID")),
 			huh.NewInput().
 				Title("Grafana read token").
-				Description("Human-only secret. Stored in your OS keyring and used by wabsignal to query logs, metrics, and traces through the Grafana HTTP API.").
+				Description("Human-only secret. Use a Grafana stack service-account token, not a Grafana Cloud access-policy token. Stored in your OS keyring and used by wabsignal to query logs, metrics, and traces through the Grafana HTTP API.").
 				Value(&state.QueryToken).
 				EchoMode(huh.EchoModePassword).
 				Validate(required("Grafana read token")),

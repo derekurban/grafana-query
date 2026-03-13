@@ -44,6 +44,10 @@ should run it once on the machine and confirm the credentials. After that,
 agents can use `project env`, `run`, `doctor`, `logs`, `metrics`, `traces`,
 `query`, and `correlate`.
 
+For the read plane, use a Grafana stack service-account token for Grafana HTTP
+API access. Do not use a Grafana Cloud access-policy token as the setup read
+token.
+
 When run in an interactive terminal, `wabsignal setup` now launches a guided
 TUI wizard by default. Use `--non-interactive` only for explicit operator
 automation where every required flag is already known.

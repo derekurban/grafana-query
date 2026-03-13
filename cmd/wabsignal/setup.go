@@ -170,7 +170,7 @@ Setup configures three distinct planes:
 			}
 			discoveredSources, sources, err := discoverSignalSources(ctx, client)
 			if err != nil {
-				return fmt.Errorf("datasource discovery failed: %w", err)
+				return explainSetupDiscoveryError(queryToken, err)
 			}
 			setupConfig := cfg.SetupConfig{
 				Mode:           mode,
@@ -319,6 +319,22 @@ func normalizeURL(rawURL, label string) (string, error) {
 	parsed.RawQuery = ""
 	parsed.Fragment = ""
 	return strings.TrimRight(parsed.String(), "/"), nil
+}
+
+func explainSetupDiscoveryError(queryToken string, err error) error {
+	if err == nil {
+		return nil
+	}
+	message := err.Error()
+	if strings.Contains(message, "401 Unauthorized") || strings.Contains(message, "api-key.invalid") {
+		guidance := "datasource discovery failed after Grafana HTTP API validation. The supplied read token reached the Grafana stack but cannot list datasources."
+		if strings.HasPrefix(strings.TrimSpace(queryToken), "glc_") {
+			guidance += " The token begins with \"glc_\", which usually indicates a Grafana Cloud token rather than a Grafana stack service-account token."
+		}
+		guidance += " For wabii-signal setup, use a Grafana stack service-account token with datasource read/query access. Original error: " + message
+		return fmt.Errorf("%s", guidance)
+	}
+	return fmt.Errorf("datasource discovery failed: %w", err)
 }
 
 func setupSecretSummary(mode, queryToken, managementToken string) map[string]any {

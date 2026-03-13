@@ -23,9 +23,10 @@ type GlobalOptions struct {
 
 func NewRootCmd() *cobra.Command {
 	opts := &GlobalOptions{}
+	rootGlobalOptions = opts
 	cmd := &cobra.Command{
-		Use:           "wabsignal",
-		Short:         "Hosted Grafana signal CLI for app debugging evidence",
+		Use:   "wabsignal",
+		Short: "Hosted Grafana signal CLI for app debugging evidence",
 		Long: strings.TrimSpace(`
 wabsignal is a hosted Grafana CLI for collecting, bootstrapping, and querying
 application telemetry during local development, QA, and debugging.
