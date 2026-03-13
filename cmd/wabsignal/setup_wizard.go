@@ -84,7 +84,7 @@ touching machine-level credentials.
 				Value(&state.Mode),
 			huh.NewInput().
 				Title("Grafana organization ID").
-				Description("Used to build the Grafana Cloud pages this wizard will send you to. Example: derekurban or an org identifier you use in grafana.com URLs.").
+				Description("Used to build the Grafana Cloud pages this wizard will send you to. Example: acme-platform or the org identifier you use in grafana.com URLs.").
 				Value(&state.OrgID).
 				Validate(required("Grafana organization ID")),
 		).Title("Step 1: Choose mode"),
@@ -131,10 +131,25 @@ From the stack details page:
    Example: 1234567
 4. Note the stack name as shown in the stack URL or details page.
 
-You will paste those values into the next screen.
+Paste those values below before continuing.
 `)).
 				Next(true).
-				NextLabel("I have the OpenTelemetry details"),
+				NextLabel("Enter the OpenTelemetry values"),
+			huh.NewInput().
+				Title("Stack name").
+				Description("The stack subdomain, usually visible on the stack details page. Example: my-stack for https://my-stack.grafana.net").
+				Value(&state.StackName).
+				Validate(required("stack name")),
+			huh.NewInput().
+				Title("OTLP endpoint").
+				Description("Paste the OTLP endpoint from the stack's OpenTelemetry page. Example: https://otlp-gateway-prod-ca-east-0.grafana.net/otlp").
+				Value(&state.OTLPEndpoint).
+				Validate(required("OTLP endpoint")),
+			huh.NewInput().
+				Title("OTLP instance ID").
+				Description("Paste the OTLP instance ID from the stack's OpenTelemetry page. This also becomes the stack ID for full-access policy automation.").
+				Value(&state.OTLPInstanceID).
+				Validate(required("OTLP instance ID")),
 		).Title("Step 3: OpenTelemetry"),
 	)
 	if err := otelForm.Run(); err != nil {
@@ -155,10 +170,16 @@ Create a Grafana Cloud access policy for wabii-signal full-access management.
 Make sure it includes access policy management scopes, specifically
 "accesspolicies:read" and "accesspolicies:write", then create a token for it.
 
-You will paste that management token into the final setup screen.
+Paste that management token below before continuing.
 `, strings.TrimSpace(state.OrgID)))).
 					Next(true).
-					NextLabel("I have the full-access policy token"),
+					NextLabel("Enter the management token"),
+				huh.NewInput().
+					Title("Grafana Cloud management token").
+					Description("Paste the full-access Cloud access-policy token you created. Stored in your OS keyring and used only for managed write-token lifecycle.").
+					Value(&state.ManagementToken).
+					EchoMode(huh.EchoModePassword).
+					Validate(required("Grafana Cloud management token")),
 			).Title("Step 4: Access policies"),
 		)
 		if err := accessPolicyForm.Run(); err != nil {
@@ -181,55 +202,16 @@ Use that token as the Grafana read token for wabii-signal.
 Do not use a Grafana Cloud access-policy token as the read token.
 `, strings.TrimSpace(state.OrgID)))).
 				Next(true).
-				NextLabel("I have the Viewer service-account token"),
+				NextLabel("Enter the Viewer service-account token"),
+			huh.NewInput().
+				Title("Grafana read token").
+				Description("Paste the Viewer service-account token you created at the Grafana stack service accounts page. Stored in your OS keyring.").
+				Value(&state.QueryToken).
+				EchoMode(huh.EchoModePassword).
+				Validate(required("Grafana read token")),
 		).Title("Step 5: Service account"),
 	)
 	if err := serviceAccountForm.Run(); err != nil {
-		return err
-	}
-
-	connectionFields := []huh.Field{
-		huh.NewInput().
-			Title("Stack name").
-			Description("The stack subdomain, usually visible on the stack details page. Example: my-stack for https://my-stack.grafana.net").
-			Value(&state.StackName).
-			Validate(required("stack name")),
-		huh.NewInput().
-			Title("OTLP endpoint").
-			Description("Paste the OTLP endpoint from the stack's OpenTelemetry page. Example: https://otlp-gateway-prod-ca-east-0.grafana.net/otlp").
-			Value(&state.OTLPEndpoint).
-			Validate(required("OTLP endpoint")),
-		huh.NewInput().
-			Title("OTLP instance ID").
-			Description("Paste the OTLP instance ID from the stack's OpenTelemetry page. This also becomes the stack ID for full-access policy automation.").
-			Value(&state.OTLPInstanceID).
-			Validate(required("OTLP instance ID")),
-		huh.NewInput().
-			Title("Grafana read token").
-			Description("Paste the Viewer service-account token you created at the Grafana stack service accounts page. Stored in your OS keyring.").
-			Value(&state.QueryToken).
-			EchoMode(huh.EchoModePassword).
-			Validate(required("Grafana read token")),
-	}
-	if cfg.NormalizeMode(state.Mode) == cfg.ModeFullAccess {
-		connectionFields = append(connectionFields,
-			huh.NewInput().
-				Title("Grafana Cloud management token").
-				Description("Paste the full-access Cloud access-policy token you created. Stored in your OS keyring and used only for managed write-token lifecycle.").
-				Value(&state.ManagementToken).
-				EchoMode(huh.EchoModePassword).
-				Validate(required("Grafana Cloud management token")),
-		)
-	}
-
-	finalTitle := "Step 6: Paste values"
-	if cfg.NormalizeMode(state.Mode) != cfg.ModeFullAccess {
-		finalTitle = "Step 5: Paste values"
-	}
-	connectionForm := huh.NewForm(
-		huh.NewGroup(connectionFields...).Title(finalTitle),
-	)
-	if err := connectionForm.Run(); err != nil {
 		return err
 	}
 
