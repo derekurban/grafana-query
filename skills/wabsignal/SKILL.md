@@ -147,9 +147,9 @@ Use the highest-level command that matches the task:
 Default behavior already scopes queries to:
 
 - current project services
-- active run ID, if present
 
 Use `--no-project-scope` only when the debugging target is intentionally outside the current project.
+If you want only one run, include the run ID explicitly in the query.
 
 ## Investigation patterns
 

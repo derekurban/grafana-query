@@ -19,11 +19,11 @@ func newSignalCmd(opts *GlobalOptions, signal string) *cobra.Command {
 	var noProjectScope bool
 
 	cmd := &cobra.Command{
-		Use:   signal + " <query>",
-		Short: fmt.Sprintf("Run %s queries through Grafana HTTP API", signal),
-		Long: signalLongHelp(signal),
+		Use:     signal + " <query>",
+		Short:   fmt.Sprintf("Run %s queries through Grafana HTTP API", signal),
+		Long:    signalLongHelp(signal),
 		Example: signalExampleHelp(signal),
-		Args:  cobra.ExactArgs(1),
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if watchEvery > 0 {
 				return runSignalWatch(opts, signal, args[0], since, from, to, limit, instant, watchEvery, noProjectScope)
@@ -193,9 +193,9 @@ func signalLongHelp(signal string) string {
 		return strings.TrimSpace(`
 Run LogQL-style log queries through the configured Grafana logs datasource.
 
-By default, wabii-signal injects project service scope and current run scope
-into the query when a project/run is active. Use --no-project-scope when you
-need to inspect the broader stack.
+By default, wabii-signal injects project service scope into the query when a
+project is active. Use --no-project-scope when you need to inspect the broader
+stack. If you need a specific run, filter for the run ID explicitly.
 `)
 	case "metrics":
 		return strings.TrimSpace(`
@@ -210,8 +210,8 @@ watch the query repeatedly during live debugging.
 Run trace queries through the configured Grafana traces datasource.
 
 Like the other signal commands, traces are automatically scoped by project
-service and current run when that metadata is available. Use "traces get" to
-retrieve a specific trace by ID.
+service. Use "traces get" to retrieve a specific trace by ID. If you need a
+specific run, filter for the run ID explicitly.
 `)
 	default:
 		return ""

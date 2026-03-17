@@ -165,7 +165,7 @@ wabsignal correlate --trace-id 4f4a6e3f7b1f4c9c
 
 By default, reads are scoped to the project's primary and extra services. Use `--no-project-scope` when you need to bypass that.
 
-If a run scope is active through `wabsignal run start`, reads are also narrowed to that run ID by default.
+If a run scope is active through `wabsignal run start`, `project env` includes `WABSIGNAL_RUN_ID` so the app can stamp telemetry for that debugging session. Generic reads stay project-scoped by default; filter on the run ID explicitly when you want only one run.
 
 ## Notes
 

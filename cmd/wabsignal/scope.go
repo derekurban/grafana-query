@@ -13,10 +13,6 @@ func applyProjectScope(signal, expr string, project *cfg.Project, noProjectScope
 		return strings.TrimSpace(expr)
 	}
 	services := project.AllServices()
-	runID := ""
-	if project.CurrentRun != nil {
-		runID = strings.TrimSpace(project.CurrentRun.ID)
-	}
 
 	scoped := strings.TrimSpace(expr)
 	switch signal {
@@ -24,24 +20,15 @@ func applyProjectScope(signal, expr string, project *cfg.Project, noProjectScope
 		if len(services) > 0 {
 			scoped = injectLogQLScope(scoped, project.QueryScope.LogServiceLabel, services)
 		}
-		if runID != "" {
-			scoped = injectSingleLabelScope(scoped, project.QueryScope.LogRunLabel, runID)
-		}
 		return scoped
 	case "metrics":
 		if len(services) > 0 {
 			scoped = injectPromQLScope(scoped, project.QueryScope.MetricServiceLabel, services)
 		}
-		if runID != "" {
-			scoped = injectSinglePromScope(scoped, project.QueryScope.MetricRunLabel, runID)
-		}
 		return scoped
 	case "traces":
 		if len(services) > 0 {
 			scoped = injectTraceQLScope(scoped, project.QueryScope.TraceServiceAttr, services)
-		}
-		if runID != "" {
-			scoped = injectSingleTraceScope(scoped, project.QueryScope.TraceRunAttr, runID)
 		}
 		return scoped
 	default:

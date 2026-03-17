@@ -17,9 +17,12 @@ func newRunCmd(opts *GlobalOptions) *cobra.Command {
 		Long: strings.TrimSpace(`
 Manage the current project run/session scope.
 
-The active run ID is injected into OTLP bootstrap output and is also used by
-default read-side query scoping. This gives both humans and agents a tighter
-loop for "make a change -> exercise the app -> inspect only this run".
+The active run ID is injected into OTLP bootstrap output so the app can stamp
+telemetry for a specific QA or debugging session.
+
+Read-side commands remain project-scoped by default. If you want to inspect a
+specific run, filter for that run ID explicitly in your log, metric, or trace
+query.
 `),
 		Example: strings.TrimSpace(`
   wabsignal run start
@@ -131,9 +134,9 @@ loop for "make a change -> exercise the app -> inspect only this run".
 			}
 
 			payload := map[string]any{
-				"project":      projectName,
-				"cleared_run":  previous,
-				"current_run":  nil,
+				"project":       projectName,
+				"cleared_run":   previous,
+				"current_run":   nil,
 				"had_run_scope": previous != nil,
 			}
 			if isJSONOutput(opts.Output) {
